@@ -6,9 +6,9 @@ from account.models import Account
 class AccountAdmin(UserAdmin):
     exclude = ('username',)
     fieldsets = (
-        ('Personal info', {'fields': ('first_name', 'last_name', 'phone_number' 'email', 'password')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'phone_number', 'email', 'password')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
-        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
+        ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
     )
     ordering = ('email',)
     list_display = ('email', 'first_name', 'last_name', 'phone_number',
