@@ -9,20 +9,6 @@ from rest_framework.generics import GenericAPIView, CreateAPIView
 
 from account.api.serializers import AccountSerializer
 
-from account.models import Account
-
-
-# Respond with json of uptime
-@api_view(['GET', ])
-def uptime(request):
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT date_trunc('second', current_timestamp - pg_postmaster_start_time()) as uptime;")
-        row = cursor.fetchone()
-    uptime = str(row[0])
-    uptime = uptime.replace(',', '')
-    return JsonResponse({"psql": {"uptime": uptime}})
-
-
 class AccountRegistrationView(GenericAPIView, CreateModelMixin):
     """
     View to register a new user account.
@@ -49,7 +35,6 @@ class AccountView(GenericAPIView, RetrieveModelMixin, DestroyModelMixin):
     def patch(self, request):
         instance = self.get_object()
         serializer = AccountSerializer(instance=instance, data=request.data, partial=True)
-        res_status = status.HTTP_400_BAD_REQUEST
         serializer.is_valid(raise_exception=True)
         serializer.save(instance=request.user, validated_data=serializer.validated_data)
         res_status = status.HTTP_201_CREATED
