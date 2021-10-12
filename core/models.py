@@ -11,12 +11,23 @@ def upload_item_picture(instance, filename):
 
 
 class Item(TrackingModule):
+    class SizeType(models.TextChoices):
+        SMALL = 'small'
+        MEDIUM = 'medium'
+        LARGE = 'large'
+
+    class WeightType(models.TextChoices):
+        LIGHT = 'light'
+        MEDIUM = 'medium'
+        HEAVY = 'heavy'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=255, blank=True, null=True)
     photo = models.ImageField(upload_to=upload_item_picture, blank=True, null=True)
-    #weight
-    #size
+    size = models.CharField(max_length=6, choices=SizeType.choices, default=SizeType.MEDIUM)
+    weight = models.CharField(max_length=6, choices=WeightType.choices, default=WeightType.MEDIUM)
+    fragile = models.BooleanField(default=False)
 
     def __str__(self):
         return '{}'.format(self.name)

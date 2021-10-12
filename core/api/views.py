@@ -17,7 +17,6 @@ from django.db import transaction
 # Respond with json of uptime
 
 
-
 @api_view(['GET', ])
 def uptime(request):
     with connection.cursor() as cursor:
@@ -67,17 +66,16 @@ class RetrieveDeliveryView(GenericAPIView):
     * Return info of the created delivery.
     """
     serializer_class = ClientDeliverySerializer
-    permission_classes = [IsAuthenticated]
-
+    # checking against user commented out
     def get(self, request):
-        user = request.user.person
+        # user = request.user.person
         id = request.query_params.get('id')
         delivery = Delivery.objects.get(id=id)
-        if delivery.sender == user or delivery.receiver == user:
-            serializer = self.get_serializer(delivery)
-            return Response(serializer.data)
-        else:
-            return Response({'error': "You don't have access to this"}, status.HTTP_401_UNAUTHORIZED)
+        # if delivery.sender == user or delivery.receiver == user:
+        serializer = self.get_serializer(delivery)
+        return Response(serializer.data)
+        # else:
+        #     return Response({'error': "You don't have access to this"}, status.HTTP_401_UNAUTHORIZED)
 
 
 class ListDeliveryView(GenericAPIView):

@@ -3,10 +3,11 @@ from core.models import Item, Delivery
 from account.api.serializers import PersonSerializer
 from drf_writable_nested.serializers import WritableNestedModelSerializer
 
+
 class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Item
-        fields = ['name', 'description', 'photo']
+        fields = ['name', 'description', 'photo', 'size', 'weight', 'fragile']
 
 
 class CreateDeliverySerializer(WritableNestedModelSerializer):
