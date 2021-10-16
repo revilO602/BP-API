@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     # My apps
     'core',
     'account',
+    'places',
 
     # Django apps
     'django.contrib.admin',
@@ -47,10 +48,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.gis',
 
     # Support apps
-    'drf_spectacular',
+    'drf_spectacular', # Generates OpenApi3 swagger documentation
     'rest_framework',
+    'rest_framework_gis', # geographical serializers
     'corsheaders',
     'rest_framework_simplejwt',
 ]
@@ -105,6 +108,7 @@ DATABASES = {
         'PASSWORD': ENV_VARS.get('PASSWORD'),
         'HOST': ENV_VARS.get('HOST'),
         'PORT': ENV_VARS.get('PORT'),
+        'ATOMIC_REQUESTS': True,
     }
 }
 
@@ -192,3 +196,6 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
+if DEBUG:
+    GDAL_LIBRARY_PATH = os.path.join(BASE_DIR, ENV_VARS.get('GDAL_PATH'))
+    GEOS_LIBRARY_PATH = os.path.join(BASE_DIR, ENV_VARS.get('GEOS_PATH'))

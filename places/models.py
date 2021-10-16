@@ -1,27 +1,26 @@
-from django.db import models
 from helpers.models import TrackingModule
-import uuid
-from account.models import Person
+from django.contrib.gis.db import models
 
 
-# class Coordinates(TrackingModule):
-#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-#     latitude
-#     longitude
+
+
+# # class Coordinates(TrackingModule):
+# #     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+#
 #
 #
 #     def __str__(self):
 #         return '{}'.format(self.created_at)
-#
-#
-# class Place(TrackingModule):
-#     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-#     country = models.CharField(max_length=255)
-#     city = models.CharField(max_length=255)
-#     street = models.CharField(max_length=255)
-#     street_number = models.CharField(max_length=255)
-#     postal_code = models.CharField(max_length=255)
-#
-#     def __str__(self):
-#         return '{} {}, {} {}, {}'.format(self.street, self.street_number, self.postal_code, self.city, self.country)
 
+
+class Place(TrackingModule):
+    place_id = models.CharField(max_length=2000, primary_key=True)
+    formatted_address = models.CharField(max_length=2000)
+    country = models.CharField(max_length=255)
+    city = models.CharField(max_length=255)
+    street_address = models.CharField(max_length=500)
+    postal_code = models.CharField(max_length=255)
+    coordinates = models.PointField(geography=True, srid=4326)
+
+    def __str__(self):
+        return '{}'.format(self.formatted_address)

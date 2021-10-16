@@ -32,6 +32,7 @@ urlpatterns = [
     # REST FRAMEWORK URLS
     path('api/core/', include('core.api.urls', 'core_api')),
     path('api/account/', include('account.api.urls', 'account_api')),
+    path('api/places/', include('places.api.urls', 'places_api')),
 ]
 
 

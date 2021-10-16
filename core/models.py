@@ -2,6 +2,7 @@ from django.db import models
 from helpers.models import TrackingModule
 import uuid
 from account.models import Person
+from places.models import Place
 
 
 def upload_item_picture(instance, filename):
@@ -38,8 +39,8 @@ class Delivery(TrackingModule):
     sender = models.ForeignKey(Person, on_delete=models.RESTRICT, null=True, related_name='sender')
     receiver = models.ForeignKey(Person, on_delete=models.RESTRICT, null=True, related_name='receiver')
     item = models.ForeignKey(Item, on_delete=models.RESTRICT, null=True)
-    #pickup_place
-    #deliver_place
+    pickup_place = models.ForeignKey(Place, on_delete=models.RESTRICT, related_name='pickup_place')
+    delivery_place = models.ForeignKey(Place, on_delete=models.RESTRICT, related_name='delivery_place')
     #courier
 
     def __str__(self):

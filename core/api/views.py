@@ -1,7 +1,6 @@
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
-from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, ListModelMixin
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
@@ -26,6 +25,27 @@ def uptime(request):
     uptime = uptime.replace(',', '')
     return JsonResponse({"psql": {"uptime": uptime}})
 
+@extend_schema(
+    parameters=[OpenApiParameter(
+        name='coordinates',
+        type=str,
+        location=OpenApiParameter.QUERY,
+        required=True,
+        style='form',
+        description='Properly formatted WKT(EWKT) coordinates. ! LONGITUDE FIRST, LATITUDE SECOND !',
+        examples=[
+            OpenApiExample(
+                'Example',
+                value='"POINT(17.10818515071519 48.097275508021475)"'
+            ),
+        ],
+    ), OpenApiParameter(
+        name='photo',
+        type=str,
+        location=OpenApiParameter.QUERY,
+        required=False,
+        style='form',
+        description='Nested image file of the item',)])
 
 class CreateDeliveryView(APIView):
     """
@@ -37,16 +57,14 @@ class CreateDeliveryView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
-    @transaction.atomic
+
     def post(self, request):
         print(request.data)
         serializer = CreateDeliverySerializer(data=request.data)
         if not serializer.is_valid():
-            print(serializer.data)
             return Response(serializer.errors, status=400)
-        delivery = serializer.save(sender=request.user.person)
-        data = {'id': delivery.id, 'data': serializer.data}
-        return Response(data, status.HTTP_201_CREATED)
+        serializer.save(sender=request.user.person)
+        return Response(serializer.data, status.HTTP_201_CREATED)
 
 
 @extend_schema(
