@@ -1,10 +1,9 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from account.models import Account, Person
-from django.db import transaction
+from drf_writable_nested import UniqueFieldsMixin
 
-
-class PersonSerializer(serializers.ModelSerializer):
+class PersonSerializer(UniqueFieldsMixin, serializers.ModelSerializer):
     class Meta:
         model = Person
         fields = ['email', 'first_name', 'last_name', 'phone_number']
@@ -18,10 +17,9 @@ class AccountSerializer(serializers.ModelSerializer):
         model = Account
         fields = ['email', 'password', 'person']
         extra_kwargs = {
-            'password': {'write_only': True}
+            'password': {'write_only': True},
         }
 
-    @transaction.atomic
     def create(self, validated_data):
         person_data = validated_data.pop('person')
         person = Person.objects.create(**person_data)
@@ -34,7 +32,6 @@ class AccountSerializer(serializers.ModelSerializer):
         account.save()
         return account
 
-    @transaction.atomic
     def update(self, instance, validated_data):
         this_person = instance.person
         if validated_data.get('person'):

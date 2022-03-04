@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+
 from helpers.models import TrackingModule
 import uuid
 
@@ -34,8 +35,8 @@ class Person(TrackingModule):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     first_name = models.CharField(max_length=60)
     last_name = models.CharField(max_length=60)
-    phone_number = models.CharField(max_length=15)
-    email = models.EmailField(verbose_name="email", max_length=60)
+    phone_number = models.CharField(max_length=15, unique=True)
+    email = models.EmailField(verbose_name="email", max_length=60, unique=True)
 
     def __str__(self):
         return '{} {}'.format(self.first_name, self.last_name)

@@ -1,8 +1,9 @@
+from drf_writable_nested import UniqueFieldsMixin
 from rest_framework import serializers
 from places.models import Place
 
 
-class PlaceSerializer(serializers.ModelSerializer):
+class PlaceSerializer(UniqueFieldsMixin, serializers.ModelSerializer):
     class Meta:
         model = Place
         geo_field = 'coordinates'

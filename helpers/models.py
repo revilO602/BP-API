@@ -3,7 +3,7 @@ from django.db import models
 
 class TrackingModule(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True) # hmmm auto_now_add before
     deleted_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:

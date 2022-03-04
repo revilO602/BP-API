@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'core',
     'account',
     'places',
+    'couriers',
 
     # Django apps
     'django.contrib.admin',

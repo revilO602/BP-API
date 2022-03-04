@@ -1,4 +1,5 @@
-from django.contrib import admin
+from django.contrib.gis import admin
 from places.models import Place
 
-admin.site.register(Place)
+
+admin.site.register(Place, admin.OSMGeoAdmin)

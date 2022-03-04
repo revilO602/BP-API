@@ -1,13 +1,12 @@
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
-from django.db import connection
-from django.http import JsonResponse
 from rest_framework.mixins import CreateModelMixin, DestroyModelMixin, RetrieveModelMixin
-from rest_framework.generics import GenericAPIView, CreateAPIView
+from rest_framework.generics import GenericAPIView
 
 from account.api.serializers import AccountSerializer
+from couriers.models import Courier
+
 
 class AccountRegistrationView(GenericAPIView, CreateModelMixin):
     """
@@ -41,5 +40,11 @@ class AccountView(GenericAPIView, RetrieveModelMixin, DestroyModelMixin):
         return Response(serializer.data, status=res_status)
 
     def get(self, request):
-        return self.retrieve(self, request)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        if Courier.objects.filter(user=instance).exists():
+            newdict = {'is_courier': True}
+        else: newdict = {'is_courier': False}
+        newdict.update(serializer.data)
+        return Response(newdict)
 

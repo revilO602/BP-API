@@ -23,7 +23,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    # YOUR PATTERNS
+    # MY PATTERNS
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     # Optional UI:
     path('api/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
@@ -33,6 +33,7 @@ urlpatterns = [
     path('api/core/', include('core.api.urls', 'core_api')),
     path('api/account/', include('account.api.urls', 'account_api')),
     path('api/places/', include('places.api.urls', 'places_api')),
+    path('api/couriers/', include('couriers.api.urls', 'couriers_api')),
 ]
 
 
