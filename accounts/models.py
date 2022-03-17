@@ -1,7 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 
-from helpers.models import TrackingModule
+from couriers.models import Courier
+from helpers.models import TrackingModel
 import uuid
 
 
@@ -31,31 +32,36 @@ class AccountManager(BaseUserManager):
         return user
 
 
-class Person(TrackingModule):
+class Person(TrackingModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     first_name = models.CharField(max_length=60)
     last_name = models.CharField(max_length=60)
-    phone_number = models.CharField(max_length=15, unique=True)
-    email = models.EmailField(verbose_name="email", max_length=60, unique=True)
+    phone_number = models.CharField(max_length=15)
+    email = models.EmailField(verbose_name="email", max_length=60)
+
+    class Meta:
+        db_table = "person"
 
     def __str__(self):
         return '{} {}'.format(self.first_name, self.last_name)
 
 
-class Account(AbstractBaseUser):
+class Account(AbstractBaseUser, TrackingModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(verbose_name="email", max_length=60, unique=True)
-    date_joined = models.DateTimeField(verbose_name='date joined', auto_now_add=True)
-    last_login = models.DateTimeField(verbose_name='last login', auto_now=True)
     is_admin = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
-    person = models.ForeignKey(Person, on_delete=models.CASCADE, null=True)
+    person = models.ForeignKey(Person, related_name='account', on_delete=models.CASCADE, null=True) # null because of admin/superuser - need to require this in serializer
+    courier = models.ForeignKey(Courier, related_name='account', on_delete=models.CASCADE, null=True)
 
     USERNAME_FIELD = 'email'
 
     objects = AccountManager()
+
+    class Meta:
+        db_table = "account"
 
     # For checking permissions. to keep it simple all admin have ALL permissons
     def has_perm(self, perm, obj=None):

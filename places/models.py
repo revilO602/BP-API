@@ -1,7 +1,8 @@
-from helpers.models import TrackingModule
+from helpers.models import TrackingModel
 from django.contrib.gis.db import models
 
-class Place(TrackingModule):
+
+class Place(TrackingModel):
     place_id = models.CharField(max_length=2000, primary_key=True)
     formatted_address = models.CharField(max_length=2000)
     country = models.CharField(max_length=255)
@@ -10,5 +11,8 @@ class Place(TrackingModule):
     postal_code = models.CharField(max_length=255)
     coordinates = models.PointField(geography=True, srid=4326)
 
+    class Meta:
+        db_table = "place"
+
     def __str__(self):
-        return '{}'.format(self.formatted_address)
+        return self.formatted_address

@@ -37,8 +37,8 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 INSTALLED_APPS = [
     # My apps
-    'core',
-    'account',
+    'deliveries',
+    'accounts',
     'places',
     'couriers',
 
@@ -165,7 +165,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 MEDIA_URL = '/media/'
-AUTH_USER_MODEL = 'account.Account'
+AUTH_USER_MODEL = 'accounts.Account'
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),

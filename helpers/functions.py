@@ -1,15 +1,12 @@
-from couriers.models import Courier
-
-
-def is_courier(user):
-    return Courier.objects.filter(user=user).exists()
+from helpers.enums import DeliveryState
 
 
 def is_state_change_valid(old_state, new_state):
     if (
-            (old_state == 'ready' and new_state == 'assigned')
-            or (old_state == 'assigned' and new_state == 'delivering')
-            or (old_state == 'delivering' and (new_state == 'undeliverable' or new_state == 'delivered'))
+            (old_state == DeliveryState.READY and new_state == DeliveryState.ASSIGNED)
+            or (old_state == DeliveryState.ASSIGNED and new_state == DeliveryState.DELIVERING)
+            or (old_state == DeliveryState.DELIVERING and (new_state == DeliveryState.UNDELIVERABLE
+                                                           or new_state == DeliveryState.DELIVERED))
     ):
         return True
     else:
