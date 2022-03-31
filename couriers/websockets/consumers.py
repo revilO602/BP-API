@@ -7,11 +7,30 @@ from django.core.exceptions import ValidationError
 from deliveries.models import Delivery
 from helpers.enums import DeliveryState
 
+FORMAT_ERROR_MESSAGE = {'errors': ["Incorrect position format, make sure the message is in the following format "
+                                   "(-90 >= latitude <= 90, -180 >= longitude <= 180)"],
+                        'expectedFormat': {
+                            'latitude': 50.5258,
+                            'longitude': 25.4568
+                        }}
+
 
 def get_delivery(delivery_id):
     delivery = Delivery.objects.get(id=delivery_id)
     return delivery
 
+# Validate that message is valid position with coordinates
+def validateMessage(message):
+    try:
+        lon = message['longitude']
+        lat = message['latitude']
+        if not (-90 <= lat <= 90):
+            return False
+        if not (-180 <= lon <= 180):
+            return False
+    except (KeyError, TypeError):
+        return False
+    return True
 
 class CourierConsumer(JsonWebsocketConsumer):
 
@@ -72,11 +91,20 @@ class CourierConsumer(JsonWebsocketConsumer):
             self.channel_name
         )
 
+    def receive(self, text_data=None, bytes_data=None, **kwargs):
+        if text_data:
+            try:
+                self.receive_json(self.decode_json(text_data), **kwargs)
+            except json.decoder.JSONDecodeError:
+                self.send_json({'errors': ['Not a valid JSON']})
+        else:
+            self.send_json({
+                'errors': ['Not text section in websocket message']
+            })
+
     # Receive message from WebSocket
     def receive_json(self, content, **kwargs):
-        message = content['message']
         user = self.scope["user"]
-
         if user.is_anonymous or not user.courier:
             self.send_json({
                 'errors': ['Only courier can post to websocket']
@@ -86,12 +114,15 @@ class CourierConsumer(JsonWebsocketConsumer):
                 'errors': ['Only courier of this delivery can post to websocket']
             })
         else:
+            if not validateMessage(content):
+                self.send_json(FORMAT_ERROR_MESSAGE)
+                return
             # Send couriers position to delivery group
             async_to_sync(self.channel_layer.group_send)(
                 self.group_name,
                 {
                     'type': 'courier_position',
-                    'message': message
+                    'message': content
                 }
             )
             if self.group_name != 'group_ALL':
@@ -100,14 +131,13 @@ class CourierConsumer(JsonWebsocketConsumer):
                     'group_ALL',
                     {
                         'type': 'courier_position',
-                        'message': message
+                        'message': content
                     }
                 )
 
     # Receive message from group
     def courier_position(self, event):
-        message = event['message']
+        content = event['message']
+        content['courier_id'] = str(self.scope["user"].id)
         # Send message to WebSocket
-        self.send_json({
-            'message': message
-        })
+        self.send_json(content)

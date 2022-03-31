@@ -92,9 +92,7 @@ ROOT_URLCONF = 'bpproject.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates']
-        ,
-        'APP_DIRS': True,
+        'DIRS': [BASE_DIR / 'templates'],
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -168,7 +166,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-
+STATICFILES_DIRS = [
+    BASE_DIR / "static/wsdocs/css/",
+    BASE_DIR / "static/wsdocs/js/"
+]
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
@@ -216,6 +217,31 @@ EMAIL_HOST_USER = ENV_VARS.get('EMAIL_HOST')
 DEFAULT_FROM_EMAIL = ENV_VARS.get('EMAIL_HOST')
 EMAIL_HOST_PASSWORD = ENV_VARS.get('EMAIL_PASSWORD')
 EMAIL_PORT = 587
+
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'handlers': {
+#         'file': {
+#             'level': 'DEBUG',
+#             'class': 'logging.FileHandler',
+#             'filename': os.path.join(BASE_DIR, 'django.log'),
+#         },
+#     },
+#     'loggers': {
+#         'daphne': {
+#             'handlers': [
+#                 'file',
+#             ],
+#             'level': 'DEBUG'
+#         },
+#         'django': {
+#             'handlers': ['file'],
+#             'level': 'DEBUG',
+#             'propagate': True,
+#         },
+#     },
+# }
 
 if DEBUG:
     GDAL_LIBRARY_PATH = os.path.join(BASE_DIR, ENV_VARS.get('GDAL_PATH'))

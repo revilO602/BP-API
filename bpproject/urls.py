@@ -19,14 +19,16 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from django.conf import settings
 from django.conf.urls.static import static
 
+from django.views.generic import TemplateView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
 
-    # MY PATTERNS
+    # DOCS
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-    # Optional UI:
     path('api/swagger-ui/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
+    path('api/asyncapi/', TemplateView.as_view(template_name='wsdocs.html')),
 
     # REST FRAMEWORK URLS
     path('api/deliveries/', include('deliveries.api.urls', 'core_api')),
