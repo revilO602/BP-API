@@ -8,7 +8,7 @@ class CourierSerializer(serializers.ModelSerializer):
     class Meta:
         model = Courier
         fields = ['id_number', 'id_expiration_date', 'dl_number',
-                  'dl_expiration_date', 'vehicle_type', 'home_address', 'coordinates']
+                  'dl_expiration_date', 'vehicle_type', 'home_address']
         extra_kwargs = {
             'id_number': {'write_only': True},
             'id_expiration_date': {'write_only': True},

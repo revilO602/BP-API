@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 from pathlib import Path
 import os
+import json
 from dotenv import dotenv_values
 from datetime import timedelta
 
@@ -32,6 +33,15 @@ DEBUG = (ENV_VARS.get('DEBUG') == 'True')
 
 ALLOWED_HOSTS = [ENV_VARS.get('ALLOWED_HOST')]
 CORS_ORIGIN_ALLOW_ALL = True
+ASGI_APPLICATION = "bpproject.asgi.application"
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [(ENV_VARS.get('REDIS_HOST'), ENV_VARS.get('REDIS_PORT'))],
+        },
+    },
+}
 
 # Application definition
 
@@ -43,6 +53,7 @@ INSTALLED_APPS = [
     'couriers',
 
     # Django apps
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -197,6 +208,15 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = ENV_VARS.get('EMAIL_HOST')
+DEFAULT_FROM_EMAIL = ENV_VARS.get('EMAIL_HOST')
+EMAIL_HOST_PASSWORD = ENV_VARS.get('EMAIL_PASSWORD')
+EMAIL_PORT = 587
+
 if DEBUG:
     GDAL_LIBRARY_PATH = os.path.join(BASE_DIR, ENV_VARS.get('GDAL_PATH'))
     GEOS_LIBRARY_PATH = os.path.join(BASE_DIR, ENV_VARS.get('GEOS_PATH'))

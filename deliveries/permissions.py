@@ -9,6 +9,6 @@ class CanChangeDeliveryState(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if request.user.courier or request.user.is_admin:
-            if obj.state == 'ready' or request.user == obj.courier.user:
+            if obj.state == 'ready' or request.user == obj.courier:
                 return True
         return False

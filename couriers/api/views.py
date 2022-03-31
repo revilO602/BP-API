@@ -26,7 +26,6 @@ class CouriersView(APIView):
     """
     serializer_class = CourierSerializer
     permission_classes = [IsAuthenticated]
-    parser_classes = [JSONParser]
 
     def post(self, request):
         user = request.user

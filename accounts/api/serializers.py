@@ -1,7 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from accounts.models import Account, Person
-from drf_writable_nested import UniqueFieldsMixin
 
 from couriers.api.serializers import CourierSerializer
 
@@ -27,7 +26,6 @@ class AccountSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        print(validated_data)
         person = Person.objects.create(**validated_data.pop('person'), email=validated_data['email'])
         account = Account.objects.create(**validated_data, person=person)
         account.set_password(validated_data['password'])

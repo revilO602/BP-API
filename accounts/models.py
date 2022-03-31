@@ -50,7 +50,7 @@ class Account(AbstractBaseUser, TrackingModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(verbose_name="email", max_length=60, unique=True)
     is_admin = models.BooleanField(default=False)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
     person = models.ForeignKey(Person, related_name='account', on_delete=models.CASCADE, null=True) # null because of admin/superuser - need to require this in serializer

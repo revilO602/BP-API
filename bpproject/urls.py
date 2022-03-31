@@ -19,7 +19,6 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 from django.conf import settings
 from django.conf.urls.static import static
 
-
 urlpatterns = [
     path('admin/', admin.site.urls),
 
@@ -34,6 +33,7 @@ urlpatterns = [
     path('api/accounts/', include('accounts.api.urls', 'account_api')),
     path('api/places/', include('places.api.urls', 'places_api')),
     path('api/couriers/', include('couriers.api.urls', 'couriers_api')),
+
 ]
 
 
