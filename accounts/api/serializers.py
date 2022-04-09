@@ -1,5 +1,12 @@
-from rest_framework import serializers
-from django.contrib.auth.password_validation import validate_password
+from abc import ABC
+
+from django.contrib.auth import authenticate
+from django.contrib.auth.models import update_last_login
+from rest_framework import serializers, exceptions
+from rest_framework_simplejwt.serializers import TokenObtainSerializer
+from rest_framework_simplejwt.settings import api_settings
+from rest_framework_simplejwt.tokens import RefreshToken
+
 from accounts.models import Account, Person
 
 from couriers.api.serializers import CourierSerializer
@@ -49,3 +56,39 @@ class AccountSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
 
+
+class TokenObtainSerializerWithActiveCheck(TokenObtainSerializer):
+    token_class = RefreshToken
+
+    @classmethod
+    def get_token(cls, user):
+        return cls.token_class.for_user(user)
+
+    def validate(self, attrs):
+        authenticate_kwargs = {
+            self.username_field: attrs[self.username_field],
+            "password": attrs["password"],
+        }
+        try:
+            authenticate_kwargs["request"] = self.context["request"]
+        except KeyError:
+            pass
+        self.user = authenticate(**authenticate_kwargs)
+        if not api_settings.USER_AUTHENTICATION_RULE(self.user):
+            inactive_user = Account.objects.filter(email=authenticate_kwargs[self.username_field])
+            if inactive_user and inactive_user[0].check_password(authenticate_kwargs["password"]):
+                raise exceptions.AuthenticationFailed(
+                    "Email not confirmed",
+                    "no_active_account",
+                )
+            raise exceptions.AuthenticationFailed(
+                self.error_messages["no_active_account"],
+                "no_active_account",
+            )
+
+        refresh = self.get_token(self.user)
+        data = {"refresh": str(refresh), "access": str(refresh.access_token)}
+        if api_settings.UPDATE_LAST_LOGIN:
+            update_last_login(None, self.user)
+
+        return data

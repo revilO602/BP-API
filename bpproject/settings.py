@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 from pathlib import Path
 import os
-import json
 from dotenv import dotenv_values
 from datetime import timedelta
 
@@ -30,7 +29,7 @@ SECRET_KEY = ENV_VARS.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = (ENV_VARS.get('DEBUG') == 'True')
-
+URL = ENV_VARS.get('URL')
 ALLOWED_HOSTS = [ENV_VARS.get('ALLOWED_HOST')]
 CORS_ORIGIN_ALLOW_ALL = True
 ASGI_APPLICATION = "bpproject.asgi.application"
@@ -54,8 +53,8 @@ INSTALLED_APPS = [
 
     # Django apps
     'channels',
-    'django.contrib.admin',
     'django.contrib.auth',
+    'django.contrib.admin',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -93,6 +92,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
@@ -123,6 +123,9 @@ DATABASES = {
 }
 
 REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
@@ -131,6 +134,10 @@ REST_FRAMEWORK = {
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+]
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -166,10 +173,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    BASE_DIR / "static/wsdocs/css/",
-    BASE_DIR / "static/wsdocs/js/"
-]
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
@@ -178,7 +181,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 MEDIA_URL = '/media/'
 AUTH_USER_MODEL = 'accounts.Account'
-
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
@@ -209,14 +211,15 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 }
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_USE_TLS = True
-EMAIL_USE_SSL = False
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = ENV_VARS.get('EMAIL_HOST')
 DEFAULT_FROM_EMAIL = ENV_VARS.get('EMAIL_HOST')
-EMAIL_HOST_PASSWORD = ENV_VARS.get('EMAIL_PASSWORD')
+SENDGRID_API_KEY = ENV_VARS.get('SENDGRID_API_KEY')
+EMAIL_HOST = 'smtp.sendgrid.net'
+EMAIL_HOST_USER = 'apikey'
+EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
 EMAIL_PORT = 587
+EMAIL_USE_TLS = True
 
 # LOGGING = {
 #     'version': 1,

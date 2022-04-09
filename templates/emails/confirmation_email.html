@@ -1,0 +1,11 @@
+{% autoescape off %}
+You're receiving this e-mail because you created a new Poslito user account.
+
+Please click on the link to confirm your email address:
+{% block reset_link %}
+{{ url }}
+{% endblock %}
+
+Thanks for using Poslito!
+
+{% endautoescape %}

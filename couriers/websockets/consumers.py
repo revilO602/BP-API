@@ -33,7 +33,6 @@ def validateMessage(message):
     return True
 
 class CourierConsumer(JsonWebsocketConsumer):
-
     def connect(self):
         # Try to create a delivery group - if no delivery_id in url put into group_ALL
         try:

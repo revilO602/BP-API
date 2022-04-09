@@ -22,6 +22,6 @@ import couriers.websockets.routing
 application = ProtocolTypeRouter({
     "http": get_asgi_application(),
     "websocket": JwtAuthMiddlewareStack(
-            URLRouter(couriers.websockets.routing.websocket_urlpatterns)
+        URLRouter(couriers.websockets.routing.websocket_urlpatterns)
     )
 })

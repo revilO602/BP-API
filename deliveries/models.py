@@ -1,13 +1,13 @@
 import uuid
 from django.db import models
-
+import pgcrypto
 from helpers.models import TrackingModel
 from accounts.models import Person, Account
 from places.models import Place
 from helpers.enums import (SizeType, WeightType, DeliveryState)
 
 
-def upload_item_picture(instance, filename):
+def upload_item_picture(filename):
     ext = filename.split('.')[-1]
     filename = '{}.{}'.format(uuid.uuid4().hex, ext)
     return 'item_pictures/{filename}'.format(filename=filename)
@@ -15,8 +15,8 @@ def upload_item_picture(instance, filename):
 
 class Item(TrackingModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255)
-    description = models.CharField(max_length=255, blank=True, null=True)
+    name = pgcrypto.EncryptedCharField(models.CharField(max_length=255))
+    description = pgcrypto.EncryptedCharField(models.CharField(max_length=255, blank=True, null=True))
     photo = models.ImageField(upload_to=upload_item_picture, blank=True, null=True)
     size = models.CharField(max_length=6, choices=SizeType.choices, default=SizeType.MEDIUM)
     weight = models.CharField(max_length=6, choices=WeightType.choices, default=WeightType.MEDIUM)

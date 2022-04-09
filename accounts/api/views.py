@@ -1,18 +1,22 @@
-from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404, render
+from django.utils.encoding import force_text
+from django.utils.http import urlsafe_base64_decode
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from rest_framework_simplejwt.views import TokenObtainPairView
 
-
+from accounts.models import Account
 from accounts.permissions import IsRegistering
 from rest_framework.mixins import CreateModelMixin, DestroyModelMixin
 from rest_framework.generics import GenericAPIView
-
-from accounts.api.serializers import AccountSerializer
+from accounts.api.serializers import AccountSerializer, TokenObtainSerializerWithActiveCheck
 from bpproject.settings import DEBUG
+from accounts.api.emails import confirmation_email
+
 
 class AccountsView(GenericAPIView, CreateModelMixin):
     """
@@ -26,9 +30,8 @@ class AccountsView(GenericAPIView, CreateModelMixin):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_user = serializer.save()
-        if not DEBUG:
-            token = PasswordResetTokenGenerator().make_token(new_user)
-            send_mail('Email verification', f'http://localhost:8000/api/verification/{token}', None, [new_user.email])
+        if DEBUG:
+            confirmation_email(new_user)
         else:
             new_user.is_active = True
             new_user.save()
@@ -60,11 +63,36 @@ class AccountDetailView(APIView, DestroyModelMixin):
         serializer = self.serializer_class(instance)
         return Response(serializer.data)
 
+
+class MyTokenObtainPairView(TokenObtainPairView):
+    serializer_class = TokenObtainSerializerWithActiveCheck
+
+
+@api_view(['POST', ])
+def resend_confirmation_email(request):
+    try:
+        email = request.data['email']
+        user = get_object_or_404(Account, email=email)
+        if user.is_active:
+            return Response({"email": "Email is already confirmed"}, status=400)
+        confirmation_email(user)
+    except KeyError:
+        return Response({"email": "Field required"}, status=400)
+    return Response(status=204)
+
+
 @api_view(['GET', ])
-def mail(request):
-    send_mail(
-        'Subject here',
-        'Here is the message.',
-        None,
-        ['leontiev.oliver@gmail.com'],
-    )
+def email_verification(request, uid, token):
+    try:
+        uid = force_text(urlsafe_base64_decode(uid))
+        user = Account.objects.get(id=uid)
+    except(TypeError, ValueError, OverflowError, Account.DoesNotExist):
+        user = None
+    if user is not None and PasswordResetTokenGenerator().check_token(user, token):
+        user.is_active = True
+        user.save()
+        return render(request, 'successful-verification.html')
+    else:
+        return render(request, 'invalid_verification.html')
+
+# password reset - poslat len email s novym passwordom

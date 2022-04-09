@@ -8,6 +8,8 @@ from django.db import connection
 from django.http import JsonResponse, Http404
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+
+from deliveries.api.emails import delivery_start_receiver_email
 from deliveries.api.serializers import DeliverySerializer, SafeDeliverySerializer
 from deliveries.models import Delivery
 from django.db.models import Q
@@ -40,23 +42,32 @@ class DeliveriesView(GenericAPIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
+    def get_queryset(self):
+        user = self.request.user
+        courier = self.request.query_params.get('courier')
+        if courier:
+            deliveries = Delivery.objects.filter(courier=user)
+        else:
+            deliveries = Delivery.objects.filter(Q(sender=user.person) | Q(receiver_account=user))
+            deliveries = deliveries.annotate(user_is=Case(
+                When(sender=user.person, then=Value('sender')),
+                When(receiver_account=user, then=Value('receiver')),
+                default=Value('unknown'), ))
+        return deliveries
+
     def post(self, request):
         serializer = self.get_serializer(data=request.data, context={'sender': request.user.person})
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
         delivery = serializer.create(serializer.validated_data)
+        delivery_start_receiver_email(delivery)
         return Response(self.get_serializer(instance=delivery).data, status.HTTP_201_CREATED)
 
     def get(self, request):
         # paginator = self.pagination_class()
-        user = request.user
-        delivery = Delivery.objects.filter(Q(sender=user.person) | Q(receiver_account=user))
-        delivery = delivery.annotate(user_is=Case(
-            When(sender=user.person, then=Value('sender')),
-            When(receiver_account=user, then=Value('receiver')),
-            default=Value('unknown'), ))
+        deliveries = self.get_queryset()
         # result_page = paginator.paginate_queryset(delivery, request)
-        serializer = self.get_serializer(delivery, many=True)
+        serializer = self.get_serializer(deliveries, many=True)
         return Response(serializer.data)
 
 
@@ -112,6 +123,8 @@ class DeliveryStateView(APIView):
             return Response({"error": "Invalid state change"}, status=status.HTTP_406_NOT_ACCEPTABLE)
         if new_state == 'assigned':
             delivery.courier = request.user
+        if new_state == 'delivered':
+            delivery_start_receiver_email(delivery)
         delivery.state = new_state
         delivery.save()
         serializer = self.serializer_class(delivery)

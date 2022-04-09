@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
-
+import pgcrypto
 from couriers.models import Courier
 from helpers.models import TrackingModel
 import uuid
@@ -28,16 +28,17 @@ class AccountManager(BaseUserManager):
         user.is_admin = True
         user.is_staff = True
         user.is_superuser = True
+        user.is_active = True
         user.save(using=self._db)
         return user
 
 
 class Person(TrackingModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    first_name = models.CharField(max_length=60)
-    last_name = models.CharField(max_length=60)
-    phone_number = models.CharField(max_length=15)
-    email = models.EmailField(verbose_name="email", max_length=60)
+    first_name = pgcrypto.EncryptedCharField(models.CharField(max_length=60))
+    last_name = pgcrypto.EncryptedCharField(models.CharField(max_length=60))
+    phone_number = pgcrypto.EncryptedCharField(models.CharField(max_length=15))
+    email = pgcrypto.EncryptedEmailField(verbose_name="email", max_length=60)
 
     class Meta:
         db_table = "person"
@@ -48,7 +49,7 @@ class Person(TrackingModel):
 
 class Account(AbstractBaseUser, TrackingModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email = models.EmailField(verbose_name="email", max_length=60, unique=True)
+    email = pgcrypto.EncryptedEmailField(verbose_name="email", max_length=60, unique=True)
     is_admin = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)

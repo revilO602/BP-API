@@ -14,11 +14,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, reverse_lazy
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from django.conf import settings
 from django.conf.urls.static import static
-
+from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView
 
 urlpatterns = [
@@ -35,6 +35,18 @@ urlpatterns = [
     path('api/accounts/', include('accounts.api.urls', 'account_api')),
     path('api/places/', include('places.api.urls', 'places_api')),
     path('api/couriers/', include('couriers.api.urls', 'couriers_api')),
+
+    # PASSWORD RESET
+    path('reset_password/', auth_views.PasswordResetView.as_view(
+        template_name='accounts/registration/password_reset.html',
+        email_template_name='emails/password_reset_email.html',
+        success_url=reverse_lazy('password_reset_done')), name='reset_password', ),
+    path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(
+        template_name='accounts/registration/password_reset_done.html'), name='password_reset_done'),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
+        template_name='accounts/registration/password_reset_confirm.html'), name='password_reset_confirm'),
+    path('reset_password_complete/', auth_views.PasswordResetCompleteView.as_view(
+        template_name='accounts/registration/password_reset_complete.html'), name='password_reset_complete'),
 
 ]
 
