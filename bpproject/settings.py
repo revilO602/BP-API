@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from dotenv import dotenv_values
 from datetime import timedelta
+import json
 
 ENV_VARS = dotenv_values(".env")
 
@@ -30,7 +31,7 @@ SECRET_KEY = ENV_VARS.get('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = (ENV_VARS.get('DEBUG') == 'True')
 URL = ENV_VARS.get('URL')
-ALLOWED_HOSTS = [ENV_VARS.get('ALLOWED_HOST')]
+ALLOWED_HOSTS = json.loads(ENV_VARS.get('ALLOWED_HOST'))
 CORS_ORIGIN_ALLOW_ALL = True
 ASGI_APPLICATION = "bpproject.asgi.application"
 CHANNEL_LAYERS = {
@@ -246,6 +247,8 @@ EMAIL_USE_TLS = True
 #     },
 # }
 
-if DEBUG:
-    GDAL_LIBRARY_PATH = os.path.join(BASE_DIR, ENV_VARS.get('GDAL_PATH'))
-    GEOS_LIBRARY_PATH = os.path.join(BASE_DIR, ENV_VARS.get('GEOS_PATH'))
+GOOGLE_API_KEY = ENV_VARS.get('GOOGLE_API_KEY')
+
+# if DEBUG:
+   # GDAL_LIBRARY_PATH = os.path.join(BASE_DIR, ENV_VARS.get('GDAL_PATH'))
+   # GEOS_LIBRARY_PATH = os.path.join(BASE_DIR, ENV_VARS.get('GEOS_PATH'))

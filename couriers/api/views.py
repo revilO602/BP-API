@@ -39,23 +39,7 @@ class CouriersView(APIView):
         user.save()
         return Response(serializer.data, status.HTTP_201_CREATED)
 
-@extend_schema(
-    parameters=[OpenApiParameter(
-        name='lon',
-        type=str,
-        location=OpenApiParameter.QUERY,
-        required=True,
-        style='form',
-        description='Longitude of courier with comma: e.g. lon=25,658',
-    ), OpenApiParameter(
-        name='lat',
-        type=str,
-        location=OpenApiParameter.QUERY,
-        required=True,
-        style='form',
-        description='Latitude of courier with comma: e.g. lat=25,658',
-    )],
-)
+
 class ListClosestDeliveryView(GenericAPIView):
     """
     View to list ready deliveries ordered by closest to coordinates given as query params.

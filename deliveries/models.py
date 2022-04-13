@@ -7,7 +7,7 @@ from places.models import Place
 from helpers.enums import (SizeType, WeightType, DeliveryState)
 
 
-def upload_item_picture(filename):
+def upload_item_picture(instance, filename):
     ext = filename.split('.')[-1]
     filename = '{}.{}'.format(uuid.uuid4().hex, ext)
     return 'item_pictures/{filename}'.format(filename=filename)

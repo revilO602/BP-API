@@ -1,3 +1,4 @@
+import googlemaps.exceptions
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
@@ -10,6 +11,7 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from deliveries.api.emails import delivery_start_receiver_email
+from deliveries.api.google_api import get_distance
 from deliveries.api.serializers import DeliverySerializer, SafeDeliverySerializer
 from deliveries.models import Delivery
 from django.db.models import Q
@@ -19,7 +21,11 @@ from django.db.models import Case, Value, When
 import json
 from deliveries.permissions import CanChangeDeliveryState
 from couriers.models import Courier
-from helpers.functions import is_state_change_valid
+from helpers.functions import is_state_change_valid, calculate_price
+from django.db.models.functions import TruncMonth
+from django.db.models import Count
+import datetime
+from dateutil.relativedelta import relativedelta
 
 
 @api_view(['GET', ])
@@ -118,7 +124,8 @@ class DeliveryStateView(APIView):
         try:
             new_state = json.loads(request.body)['state']
         except KeyError:
-            return Response({'error': 'State not included, please use {"state": "new_state"}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'State not included, please use {"state": "new_state"}'},
+                            status=status.HTTP_400_BAD_REQUEST)
         if not is_state_change_valid(delivery.state, new_state):
             return Response({"error": "Invalid state change"}, status=status.HTTP_406_NOT_ACCEPTABLE)
         if new_state == 'assigned':
@@ -129,3 +136,48 @@ class DeliveryStateView(APIView):
         delivery.save()
         serializer = self.serializer_class(delivery)
         return Response(serializer.data)
+
+
+class DeliveriesStatisticsView(GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        today = datetime.date.today()
+        user = self.request.user
+        months = self.request.query_params.get('months')
+        if not months:
+            months = 5
+        start = today - relativedelta(months=months)
+        today += datetime.timedelta(days=1)
+        stats = Delivery.objects.filter(sender=user.person, created_at__range=[start, today]) \
+            .annotate(month=TruncMonth('created_at')) \
+            .values('month') \
+            .annotate(count=Count('id')) \
+            .values('month', 'count')
+        return stats
+
+    def get(self, request):
+        stats = self.get_queryset()
+        return Response(stats)
+
+
+class DeliveriesPreviewView(GenericAPIView):
+    serializer_class = SafeDeliverySerializer
+    permission_classes = [IsAuthenticated]
+
+    # validates delivery data and return distance, duration, price
+    def post(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+        size = serializer.validated_data["size"] if "size" in serializer.validated_data else "medium"
+        weight = serializer.validated_data["weight"] if "weight" in serializer.validated_data else "medium"
+        try:
+            print(serializer.validated_data["pickup_place"]["place_id"],
+                  serializer.validated_data["delivery_place"]["place_id"])
+            distance, duration = get_distance(serializer.validated_data["pickup_place"]["place_id"],
+                                              serializer.validated_data["delivery_place"]["place_id"])
+            price = calculate_price(distance["value"], size, weight)
+            return Response({"distance": distance, "duration": duration, "price": price})
+        except googlemaps.exceptions.HTTPError:
+            return Response({"error": "Invalid place Id"})

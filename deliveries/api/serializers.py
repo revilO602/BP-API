@@ -27,7 +27,6 @@ class DeliverySerializer(serializers.ModelSerializer):
         fields = ['id', 'created_at', 'user_is', 'item', 'sender', 'receiver', 'pickup_place', 'delivery_place',
                   'courier', 'state']
 
-    # refaktoring extrakcie koordinatov - dost mozno aj nepytat POINT na API urovni ale vybudovat ho z lon a lat
     def create(self, validated_data):
         pickup_place_data = validated_data.pop('pickup_place')
         delivery_place_data = validated_data.pop('delivery_place')
@@ -55,3 +54,4 @@ class SafeDeliverySerializer(serializers.ModelSerializer):
     class Meta:
         model = Delivery
         fields = ['safe_id', 'created_at', 'item', 'pickup_place', 'delivery_place', 'state']
+        read_only_fields = ['safe_id', 'created_at', 'state']
