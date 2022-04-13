@@ -1,8 +1,8 @@
 .idea
-static
 venv
 **/__pycache__
 .env
 media
 **/migrations/*
 GDAL-3.3.2-cp39-cp39-win_amd64.whl
+*.log
