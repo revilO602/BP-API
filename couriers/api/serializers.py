@@ -4,7 +4,10 @@ from couriers.models import Courier
 
 
 class CourierSerializer(serializers.ModelSerializer):
-    """ Serializes courier info """
+    """
+    Serializer for courier instances.
+    * All personal data is write only.
+    """
     class Meta:
         model = Courier
         fields = ['id_number', 'id_expiration_date', 'dl_number',

@@ -1,7 +1,6 @@
-"""General web socket middlewares
 """
-import json
-
+General web socket middleware
+"""
 from channels.db import database_sync_to_async
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
@@ -18,6 +17,12 @@ from django.conf import settings
 
 @database_sync_to_async
 def get_user(validated_token):
+    """
+    Retrieve user from database based on validated JWT token.
+
+    :param validated_token: JWT token that is valid
+    :return: User the owns the token or AnonymousUser if not found
+    """
     try:
         user = get_user_model().objects.get(id=validated_token["user_id"])
         return user
@@ -27,11 +32,17 @@ def get_user(validated_token):
 
 
 class JwtAuthMiddleware(BaseMiddleware):
+    """
+    Middleware to authenticate user when opening a websocket connection.
+    """
     def __init__(self, inner):
         super().__init__(inner)
         self.inner = inner
 
     async def __call__(self, scope, receive, send):
+        """
+        Authenticate user before moving on to the parent call method.
+        """
         # Close old database connections to prevent usage of timed out connections
         close_old_connections()
 
@@ -76,4 +87,7 @@ class JwtAuthMiddleware(BaseMiddleware):
 
 
 def JwtAuthMiddlewareStack(inner):
+    """
+    Return an instance of the JWTAuth middleware.
+    """
     return JwtAuthMiddleware(AuthMiddlewareStack(inner))

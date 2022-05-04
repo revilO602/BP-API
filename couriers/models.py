@@ -6,6 +6,10 @@ import uuid
 
 
 class Courier(TrackingModel):
+    """
+    Courier model responsible for holding data required for being a courier.
+    * All personal data is encrypted on the database level.
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     id_number = pgcrypto.EncryptedCharField(models.CharField(max_length=20))
     id_expiration_date = pgcrypto.EncryptedDateField(models.DateField())
