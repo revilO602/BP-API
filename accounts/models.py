@@ -7,7 +7,17 @@ import uuid
 
 
 class AccountManager(BaseUserManager):
+    """
+    Account manager responsible for creating account instances through the CLI.
+    """
     def create_user(self, email, password):
+        """
+        Create a normal user.
+
+        :param email: Email of new user
+        :param password: Plain text password of new user
+        :return: Created account instance
+        """
         if not email:
             raise ValueError('Users must have an email address')
 
@@ -21,6 +31,13 @@ class AccountManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password):
+        """
+        Create a superuser.
+
+        :param email: Email of new superuser
+        :param password: Plain text password of new superuser
+        :return: Created account instance
+        """
         user = self.create_user(
             email=self.normalize_email(email),
             password=password,
@@ -34,6 +51,10 @@ class AccountManager(BaseUserManager):
 
 
 class Person(TrackingModel):
+    """
+    Person Model responsible for holding personal data of people.
+    * All personal data is encrypted on the database level.
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     first_name = pgcrypto.EncryptedCharField(models.CharField(max_length=60))
     last_name = pgcrypto.EncryptedCharField(models.CharField(max_length=60))
@@ -48,13 +69,17 @@ class Person(TrackingModel):
 
 
 class Account(AbstractBaseUser, TrackingModel):
+    """
+    Account model responsible for holding credentials of users.
+    * All personal data is encrypted on the database level.
+    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = pgcrypto.EncryptedEmailField(verbose_name="email", max_length=60, unique=True)
     is_admin = models.BooleanField(default=False)
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
-    person = models.ForeignKey(Person, related_name='account', on_delete=models.CASCADE, null=True) # null because of admin/superuser - need to require this in serializer
+    person = models.ForeignKey(Person, related_name='account', on_delete=models.CASCADE, null=True) # null because of admin/superuser - required in serializer
     courier = models.ForeignKey(Courier, related_name='account', on_delete=models.CASCADE, null=True)
 
     USERNAME_FIELD = 'email'

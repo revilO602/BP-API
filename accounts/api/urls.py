@@ -1,10 +1,7 @@
 from django.urls import path
 from accounts.api.views import (AccountsView, AccountDetailView,
                                 resend_confirmation_email, email_verification, MyTokenObtainPairView)
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView
-)
+from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = 'accounts'
 

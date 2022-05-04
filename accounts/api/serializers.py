@@ -1,7 +1,6 @@
-from abc import ABC
-
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import update_last_login
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers, exceptions
 from rest_framework_simplejwt.serializers import TokenObtainSerializer
 from rest_framework_simplejwt.settings import api_settings
@@ -13,13 +12,19 @@ from couriers.api.serializers import CourierSerializer
 
 
 class PersonSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Person model instances.
+    """
     class Meta:
         model = Person
         fields = ['email', 'first_name', 'last_name', 'phone_number']
 
 
 class AccountSerializer(serializers.ModelSerializer):
-    # password = serializers.CharField(write_only=True, validators=[validate_password])
+    """
+    Serializer for Account model instances.
+    """
+    password = serializers.CharField(write_only=True, validators=[validate_password])
     first_name = serializers.CharField(max_length=60, source='person.first_name')
     last_name = serializers.CharField(max_length=60, source='person.last_name')
     phone_number = serializers.CharField(max_length=15, source='person.phone_number')
@@ -33,6 +38,12 @@ class AccountSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
+        """
+        Crete a new account instance and save it to database.
+
+        :param validated_data: All new data of the account instance
+        :return: Created account model instance
+        """
         person = Person.objects.create(**validated_data.pop('person'), email=validated_data['email'])
         account = Account.objects.create(**validated_data, person=person)
         account.set_password(validated_data['password'])
@@ -40,6 +51,13 @@ class AccountSerializer(serializers.ModelSerializer):
         return account
 
     def update(self, instance, validated_data):
+        """
+        Update an account instance.
+
+        :param instance: Account being updated
+        :param validated_data: All new data of the account instance
+        :return: Updated account instance
+        """
         this_person = instance.person
         if validated_data.get('person'):
             person_data = validated_data.pop('person')
@@ -58,6 +76,9 @@ class AccountSerializer(serializers.ModelSerializer):
 
 
 class TokenObtainSerializerWithActiveCheck(TokenObtainSerializer):
+    """
+    JWT Token serializer that checks whether account doesn't exist or is just inactive on failed authentication.
+    """
     token_class = RefreshToken
 
     @classmethod

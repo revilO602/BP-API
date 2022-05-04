@@ -4,6 +4,9 @@ from accounts.models import Account, Person
 
 
 class AccountAdmin(UserAdmin):
+    """
+    Configuration of admin page for accounts.
+    """
     exclude = ('username',)
     fieldsets = (
         ('Personal info', {'fields': ('email', 'password')}),
