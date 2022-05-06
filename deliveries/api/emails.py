@@ -4,6 +4,11 @@ from bpproject.settings import DEFAULT_FROM_EMAIL, URL
 
 
 def delivery_start_receiver_email(delivery):
+    """
+    Sends an email to the delivery receiver, informing them of the delivery.
+
+    :param delivery: the new delivery object
+    """
     message = render_to_string('emails/receiver_delivery_start_email.html',
                                {'sender_name': delivery.sender.first_name,
                                 'item_name': delivery.item.name,

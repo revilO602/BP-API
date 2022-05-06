@@ -8,12 +8,14 @@ from places.api.serializers import PlaceSerializer
 
 
 class ItemSerializer(serializers.ModelSerializer):
+    """ Serializer for item instances """
     class Meta:
         model = Item
         fields = ['name', 'description', 'photo', 'size', 'weight', 'fragile']
 
 
 class DeliverySerializer(serializers.ModelSerializer):
+    """ Serializer for delivery instances """
     receiver = PersonSerializer()
     sender = PersonSerializer(read_only=True)
     item = ItemSerializer()
@@ -25,16 +27,24 @@ class DeliverySerializer(serializers.ModelSerializer):
     class Meta:
         model = Delivery
         fields = ['id', 'created_at', 'user_is', 'item', 'sender', 'receiver', 'pickup_place', 'delivery_place',
-                  'courier', 'state']
+                  'courier', 'state', 'expected_duration', 'route_distance', 'price']
+        read_only_fields = ['id', 'created_at', 'state', 'expected_duration', 'route_distance', 'price']
 
     def create(self, validated_data):
+        """
+        Create a new delivery - first state is always 'ready'
+
+        :param validated_data: data of the serializer after validation
+        :return: created delivery instance
+        """
         pickup_place_data = validated_data.pop('pickup_place')
         delivery_place_data = validated_data.pop('delivery_place')
         receiver_data = validated_data.pop('receiver')
+        item_data = validated_data.pop('item')
         pickup_place_coordinates = Point(pickup_place_data.pop('longitude'), pickup_place_data.pop('latitude'))
         delivery_place_coordinates = Point(delivery_place_data.pop('longitude'), delivery_place_data.pop('latitude'))
         delivery = Delivery.objects.create(
-            item=Item.objects.create(**validated_data.pop('item')),
+            item=Item.objects.create(**item_data),
             sender=self.context['sender'],
             receiver=Person.objects.get_or_create(**receiver_data)[0],
             receiver_account=Account.objects.filter(email=receiver_data['email']).first(),
@@ -47,11 +57,13 @@ class DeliverySerializer(serializers.ModelSerializer):
 
 
 class SafeDeliverySerializer(serializers.ModelSerializer):
+    """ Serializer for delivery instances - serializes only non-sensitive data """
     item = ItemSerializer()
     pickup_place = PlaceSerializer()
     delivery_place = PlaceSerializer()
 
     class Meta:
         model = Delivery
-        fields = ['safe_id', 'created_at', 'item', 'pickup_place', 'delivery_place', 'state']
-        read_only_fields = ['safe_id', 'created_at', 'state']
+        fields = ['safe_id', 'created_at', 'item', 'pickup_place', 'delivery_place',
+                  'state', 'expected_duration', 'route_distance', 'price']
+        read_only_fields = ['safe_id', 'created_at', 'state', 'expected_duration', 'route_distance', 'price']

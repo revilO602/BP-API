@@ -40,57 +40,94 @@ def uptime(request):
 
 class DeliveriesView(GenericAPIView):
     """
-    View to create a delivery. Authenticated user automatically becomes the sender of the delivery.
-
-    * Return info of the created delivery.
+    View that handles operations on deliveries.
     """
     serializer_class = DeliverySerializer
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
+        """
+        Get a queryset of deliveries from users history.
+        * Deliveries are annotated by users role in them - sender/receiver/courier
+
+        :return: Query set with 100 deliveries
+        """
         user = self.request.user
         courier = self.request.query_params.get('courier')
         if courier:
             deliveries = Delivery.objects.filter(courier=user)
+            deliveries = deliveries.annotate(user_is='courier')
         else:
             deliveries = Delivery.objects.filter(Q(sender=user.person) | Q(receiver_account=user))
             deliveries = deliveries.annotate(user_is=Case(
                 When(sender=user.person, then=Value('sender')),
                 When(receiver_account=user, then=Value('receiver')),
                 default=Value('unknown'), ))
-        return deliveries
+        return deliveries[:100]
 
     def post(self, request):
+        """
+        Create a new delivery, it starts in the 'ready' state.
+
+        :param request: HTTP POST request with form data of a new delivery in body.
+        :return: HTTP Response - 200 with delivery data if success, 400 if invalid body
+        """
         serializer = self.get_serializer(data=request.data, context={'sender': request.user.person})
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
+        try:
+            distance, duration = get_distance(serializer.validated_data["pickup_place"]["place_id"],
+                                              serializer.validated_data["delivery_place"]["place_id"])
+
+        except googlemaps.exceptions.HTTPError:
+            return Response({"error": "Invalid place Id"})
         delivery = serializer.create(serializer.validated_data)
+        delivery.route_distance = distance["value"]
+        delivery.expected_duration = duration["value"]
+        delivery.price = calculate_price(distance["value"], delivery.item.size, delivery.item.weight)
+        delivery.save()
         delivery_start_receiver_email(delivery)
         return Response(self.get_serializer(instance=delivery).data, status.HTTP_201_CREATED)
 
     def get(self, request):
-        # paginator = self.pagination_class()
+        """
+        Retrieve a list of deliveries from the users history.
+
+        :param request: HTTP GET request with delivery ID in URL.
+        :return: HTTP Response - 200 with deliveries data if success, 404 if not found
+        """
         deliveries = self.get_queryset()
-        # result_page = paginator.paginate_queryset(delivery, request)
         serializer = self.get_serializer(deliveries, many=True)
         return Response(serializer.data)
 
 
 class DeliveryDetailView(APIView):
     """
-    View to get information of delivery by ID.
-
-    * Return info of the created delivery.
+    View that handles operations on one delivery.
     """
     serializer_class = DeliverySerializer
 
-    def get_object(self, delivery_id):
-        return get_object_or_404(Delivery, id=delivery_id)
+    def get_object(self, delivery_id, user):
+        delivery = Delivery.objects.filter(id=delivery_id)
+        if not delivery:
+            raise Http404
+        delivery = delivery.annotate(user_is=Case(
+            When(sender=user.person, then=Value('sender')),
+            When(receiver_account=user, then=Value('receiver')),
+            When(courier=user, then=Value('courier')),
+            default=Value('unknown'), ))
+        return delivery.first()
 
     def get(self, request, delivery_id):
+        """
+        Retrieve one delivery by its ID
+        * Deliveries are annotated by users role in them - sender/receiver/courier
+
+        :return: Delivery object
+        """
         try:
-            delivery = self.get_object(delivery_id)
+            delivery = self.get_object(delivery_id, request.user)
         except ValidationError as e:
             return Response({"error": e.messages}, status=status.HTTP_400_BAD_REQUEST)
         serializer = self.serializer_class(delivery)
@@ -99,24 +136,34 @@ class DeliveryDetailView(APIView):
 
 class DeliveryStateView(APIView):
     """
-    View for courier to change state of delivery - includes accepting a delivery:
-     Assigns the delivery to the authenticated courier. Delivery can only be accepted if its in the 'ready' state.
-    Use the safe_id of the delivery as a query parameter.
-
-    * Returns all information about the accepted delivery.
+    View for courier to change state of delivery - includes accepting a delivery
     """
     serializer_class = DeliverySerializer
     permission_classes = [IsAuthenticated, CanChangeDeliveryState]
 
     def get_object(self, safe_delivery_id):
-        try:
-            obj = Delivery.objects.get(safe_id=safe_delivery_id)
-            self.check_object_permissions(self.request, obj)
-            return obj
-        except Delivery.DoesNotExist:
+        """
+        Retrieve delivery by its safe ID - this ID allows only non-sensitive data to be viewed.
+
+        :param safe_delivery_id: safe_id of the delivery.
+        :return: Delivery object.
+        """
+        delivery = Delivery.objects.filter(safe_id=safe_delivery_id)
+        delivery = delivery.annotate(user_is='courier').first()
+        if not delivery:
             raise Http404
+        self.check_object_permissions(self.request, delivery)
+        return delivery
 
     def patch(self, request, safe_delivery_id):
+        """
+        Updates the state of the delivery.
+
+        :param request: HTTP Patch request containing the new state of delivery in body.
+        :param safe_delivery_id: safe ID of the delivery.
+        :return: HTTP response - 200 with delivery data including sensitive data (since courier
+                 is now assigned to the delivery) if success, 400 if invalid body, 404 if not found
+        """
         try:
             delivery = self.get_object(safe_delivery_id)
         except ValidationError as e:
@@ -139,9 +186,17 @@ class DeliveryStateView(APIView):
 
 
 class DeliveriesStatisticsView(GenericAPIView):
+    """
+    View to retrieve statistics of deliveries for user.
+    """
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        """
+        Retrieve monthly statistics of sent deliveries.
+
+        :return: query set annotated with the number of deliveries a user sent per month
+        """
         today = datetime.date.today()
         user = self.request.user
         months = self.request.query_params.get('months')
@@ -157,16 +212,30 @@ class DeliveriesStatisticsView(GenericAPIView):
         return stats
 
     def get(self, request):
+        """
+        Retrieve number of sent deliveries for user per month.
+
+        :param request: HTTP GET request with the amount of months as query param.
+        :return: HTTP Response - 200 with requested data
+        """
         stats = self.get_queryset()
         return Response(stats)
 
 
 class DeliveriesPreviewView(GenericAPIView):
+    """
+    View that allows to retrieve a preview of the delivery before creating it.
+    """
     serializer_class = SafeDeliverySerializer
     permission_classes = [IsAuthenticated]
 
-    # validates delivery data and return distance, duration, price
     def post(self, request):
+        """
+        Retrieve a preview of the distance, duration and price of a delivery.
+
+        :param request: HTTP POST request with the data of the delivery in body.
+        :return: HTTP Response - 200 with duration. distance and price of successful, 400 if invalid body
+        """
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)

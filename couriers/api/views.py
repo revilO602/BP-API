@@ -1,14 +1,18 @@
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
+from couriers.permissions import IsCourier
+from deliveries.api.google_api import get_distance_for_sort
 from deliveries.api.serializers import SafeDeliverySerializer
 from deliveries.models import Delivery
 from couriers.api.serializers import CourierSerializer
+from helpers.enums import SizeType
 
 
 class CouriersView(APIView):
@@ -40,25 +44,60 @@ class CouriersView(APIView):
 
 class ListClosestDeliveryView(GenericAPIView):
     """
-    View to list 10 ready deliveries ordered by closest to coordinates given as query params.
-    Size of delivery must be equal or smaller that size of courier vehicle to be retrieved.
-    * Return list of deliveries with safe info of the delivery.
-    * Query params: longitude and latitude of courier - example: /?lon=52,25486&lat=24,6589 .
+    View to retrieve closest deliveries.
     """
     serializer_class = SafeDeliverySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsCourier]
+
+    def get_queryset(self):
+        """
+        Get query set of 'ready' deliveries
+        :return: query set of deliveries in the 'ready' state
+        """
+        qs = Delivery.objects.filter(state='ready')
+        return qs
+
+    def get_route_distance(self, delivery):
+        """
+        Get route distance from courier to delivery pick up place
+
+        :param delivery: delivery object
+        :return: route distance for driving between coordinates and pick up place of delivery - positive integer in meters
+        """
+        return get_distance_for_sort(delivery, self.latitude, self.longitude)
+
+    def sort_based_on_route_distance(self, deliveries):
+        """
+        Sort deliveries based on their route distance
+        :param deliveries: the deliveries query set
+        :return: sorted array of deliveries based on route distance
+        """
+        return sorted(deliveries, key=self.get_route_distance)
 
     def get(self, request):
-        qs = Delivery.objects.filter(state='ready')
-        longitude = self.request.query_params.get('lon', None)
-        latitude = self.request.query_params.get('lat', None)
-        if longitude is not None and latitude is not None:
-            longitude = float(longitude.replace(',', '.'))
-            latitude = float(latitude.replace(',', '.'))
-            courier_location = Point(longitude, latitude, srid=4326)
-            qs = qs.select_related('pickup_place').annotate(
-                distance=Distance('pickup_place__coordinates', courier_location)
-            ).order_by('distance')
+        """
+        List 10 ready deliveries ordered by closest to coordinates given as query params.
+        Size of delivery must be equal or smaller that size of courier vehicle to be retrieved.
+
+        :param request: HTTP GET request with query params:
+                        longitude and latitude of courier - example: /?lon=52,25486&lat=24,6589 .
+        :return: list of delivery objects with safe info of the delivery
+        """
+        vehicle_type = request.user.courier.vehicle_type
+        qs = self.get_queryset()
+        if vehicle_type == SizeType.SMALL:
+            qs = qs.filter(Q(item__size=SizeType.SMALL))
+        elif vehicle_type == SizeType.MEDIUM:
+            qs = qs.filter(Q(item__size=SizeType.SMALL) | Q(item__size=SizeType.MEDIUM))
+        self.longitude = self.request.query_params.get('lon', '0,0')
+        self.latitude = self.request.query_params.get('lat', '0,0')
+        self.longitude = float(self.longitude.replace(',', '.'))
+        self.latitude = float(self.latitude.replace(',', '.'))
+        courier_location = Point(self.longitude, self.latitude, srid=4326)
+        qs = qs.select_related('pickup_place').annotate(
+            distance=Distance('pickup_place__coordinates', courier_location)
+        ).order_by('distance')[:10]
         serializer = self.get_serializer(qs, many=True)
-        return Response(serializer.data)
+        closest_deliveries = self.sort_based_on_route_distance(serializer.data)
+        return Response(closest_deliveries)
 
