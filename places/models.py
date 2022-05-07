@@ -1,19 +1,18 @@
-import pgcrypto
+import uuid
+from deliveries.models import Delivery
 from helpers.models import TrackingModel
-from django.contrib.gis.db import models
+from django.db import models
 
 
-class Place(TrackingModel):
-    place_id = models.CharField(max_length=2000, primary_key=True)
-    formatted_address = pgcrypto.EncryptedCharField(models.CharField(max_length=2000))
-    country = pgcrypto.EncryptedCharField(models.CharField(max_length=255))
-    city = pgcrypto.EncryptedCharField(models.CharField(max_length=255))
-    street_address = pgcrypto.EncryptedCharField(models.CharField(max_length=500))
-    postal_code = pgcrypto.EncryptedCharField(models.CharField(max_length=255))
-    coordinates = models.PointField(geography=True, srid=4326)
+class Route(TrackingModel):
+    """ Model for route data """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    delivery = models.ForeignKey(Delivery, on_delete=models.SET_NULL, null=True, related_name='delivery')
+    polyline = models.CharField(max_length=2000)
+    steps = models.JSONField()
 
     class Meta:
-        db_table = "place"
+        db_table = "route"
 
     def __str__(self):
-        return self.formatted_address
+        return self.created_at
