@@ -1,5 +1,4 @@
 import googlemaps.exceptions
-from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -11,22 +10,40 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from deliveries.api.emails import delivery_start_receiver_email
-from deliveries.api.google_api import get_distance
+from deliveries.api.google_api import get_distance, get_route
 from deliveries.api.serializers import DeliverySerializer, SafeDeliverySerializer
 from deliveries.models import Delivery
 from django.db.models import Q
 from django.core.exceptions import ValidationError
 from django.db.models import Case, Value, When
-# from pagination import PageSizePagination
 import json
 from deliveries.permissions import CanChangeDeliveryState
-from couriers.models import Courier
 from helpers.functions import is_state_change_valid, calculate_price
 from django.db.models.functions import TruncMonth
 from django.db.models import Count
 import datetime
 from dateutil.relativedelta import relativedelta
+from routes.api.serializers import RouteSerializer
 
+
+def create_route(delivery):
+    """
+    Create a route entry for delivery.
+
+    :param delivery: Delivery object
+    """
+    steps, polyline = get_route(delivery.pickup_place.place_id, delivery.delivery_place.place_id)
+    data = {
+        'steps': steps,
+        'polyline': polyline
+    }
+    serializer = RouteSerializer(data=data)
+    if not serializer.is_valid(raise_exception=True):
+        print("a problem")
+        return
+    route = serializer.save()
+    route.delivery = delivery
+    route.save()
 
 @api_view(['GET', ])
 def uptime(request):
@@ -74,8 +91,9 @@ class DeliveriesView(GenericAPIView):
         :return: HTTP Response - 200 with delivery data if success, 400 if invalid body
         """
         serializer = self.get_serializer(data=request.data, context={'sender': request.user.person})
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=400)
+        # if not serializer.is_valid(raise_exception=True):
+        #     return Response(serializer.errors, status=400)
+        serializer.is_valid(raise_exception=True)
         try:
             distance, duration = get_distance(serializer.validated_data["pickup_place"]["place_id"],
                                               serializer.validated_data["delivery_place"]["place_id"])
@@ -88,6 +106,7 @@ class DeliveriesView(GenericAPIView):
         delivery.price = calculate_price(distance["value"], delivery.item.size, delivery.item.weight)
         delivery.save()
         delivery_start_receiver_email(delivery)
+        create_route(delivery)
         return Response(self.get_serializer(instance=delivery).data, status.HTTP_201_CREATED)
 
     def get(self, request):

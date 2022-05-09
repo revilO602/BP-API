@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     # My apps
     'deliveries',
     'accounts',
-    'places',
+    'routes',
     'couriers',
 
     # Django apps

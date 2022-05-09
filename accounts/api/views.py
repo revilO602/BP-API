@@ -35,7 +35,7 @@ class AccountsView(GenericAPIView, CreateModelMixin):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_user = serializer.save()
-        if DEBUG:
+        if not DEBUG:
             verification_email(new_user)
         else:
             new_user.is_active = True

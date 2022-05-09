@@ -42,11 +42,11 @@ class Item(TrackingModel):
 class Place(TrackingModel):
     """ Model for location data - uses Google Maps API PlaceID as ID """
     place_id = models.CharField(max_length=2000, primary_key=True)
-    formatted_address = pgcrypto.EncryptedCharField(models.CharField(max_length=2000))
-    country = pgcrypto.EncryptedCharField(models.CharField(max_length=255))
-    city = pgcrypto.EncryptedCharField(models.CharField(max_length=255))
-    street_address = pgcrypto.EncryptedCharField(models.CharField(max_length=500))
-    postal_code = pgcrypto.EncryptedCharField(models.CharField(max_length=255))
+    formatted_address = models.CharField(max_length=2000)
+    country = models.CharField(max_length=255)
+    city = models.CharField(max_length=255)
+    street_address = models.CharField(max_length=500)
+    postal_code = models.CharField(max_length=255)
     coordinates = models.PointField(geography=True, srid=4326)
 
     class Meta:

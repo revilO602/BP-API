@@ -33,7 +33,7 @@ urlpatterns = [
     # REST FRAMEWORK URLS
     path('api/deliveries/', include('deliveries.api.urls', 'core_api')),
     path('api/accounts/', include('accounts.api.urls', 'account_api')),
-    path('api/places/', include('places.api.urls', 'places_api')),
+    path('api/routes/', include('routes.api.urls', 'routes_api')),
     path('api/couriers/', include('couriers.api.urls', 'couriers_api')),
 
     # PASSWORD RESET

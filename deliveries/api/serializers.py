@@ -1,10 +1,13 @@
+from pprint import pprint
+
 from django.contrib.gis.geos import Point
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+
 from accounts.models import Person, Account
-from deliveries.models import Item, Delivery
-from places.models import Place
+from deliveries.models import Item, Delivery, Place
 from accounts.api.serializers import PersonSerializer, AccountSerializer
-from places.api.serializers import PlaceSerializer
+from django.db.utils import IntegrityError
 
 
 class ItemSerializer(serializers.ModelSerializer):
@@ -12,6 +15,48 @@ class ItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = Item
         fields = ['name', 'description', 'photo', 'size', 'weight', 'fragile']
+
+
+class PlaceSerializer(serializers.ModelSerializer):
+    """
+    Model serializer for Place instances.
+    """
+    place_id = serializers.CharField(max_length=2000)
+    latitude = serializers.FloatField(max_value=90., min_value=-90., write_only=True)
+    longitude = serializers.FloatField(max_value=180., min_value=-180., write_only=True)
+
+    def to_representation(self, obj):
+        """
+        Serializes a POINT coordinate structure into a more readable latitude and longitude pair.
+
+        :param obj: Place object being serialized
+        :return: JSON representation of the place object.
+        """
+        representation = super().to_representation(obj)
+        point = obj.coordinates
+        representation['latitude'] = point.coords[1]
+        representation['longitude'] = point.coords[0]
+        return representation
+
+    class Meta:
+        model = Place
+        fields = ['place_id', 'formatted_address', 'country', 'city',
+                  'street_address', 'postal_code', 'latitude', 'longitude']
+
+    def create(self, validated_data):
+        """
+        Create a new place object and save it to database.
+
+        :param validated_data: Place data after validation
+        :return: Created Place model instance.
+        """
+        lat = validated_data.pop('latitude')
+        lon = validated_data.pop('longitude')
+        place = Place.objects.create(
+            **validated_data,
+            coordinates=Point(lon, lat, srid=4236)
+        )
+        return place
 
 
 class DeliverySerializer(serializers.ModelSerializer):
@@ -30,6 +75,17 @@ class DeliverySerializer(serializers.ModelSerializer):
                   'courier', 'state', 'expected_duration', 'route_distance', 'price']
         read_only_fields = ['id', 'created_at', 'state', 'expected_duration', 'route_distance', 'price']
 
+    # def validate_nested(self, validated_data):
+    #     pickup_place_serializer = PlaceSerializer(data=validated_data['pickup_place'])
+    #     delivery_place_serializer = PlaceSerializer(data=validated_data['delivery_place'])
+    #     receiver_serializer = PersonSerializer(data=validated_data['receiver'])
+    #     item_serializer = ItemSerializer(data=validated_data['item'])
+    #     receiver_serializer.is_valid(raise_exception=True)
+    #     item_serializer.is_valid(raise_exception=True)
+    #     pickup_place_serializer.is_valid(raise_exception=True)
+    #     delivery_place_serializer.is_valid(raise_exception=True)
+
+
     def create(self, validated_data):
         """
         Create a new delivery - first state is always 'ready'
@@ -43,16 +99,22 @@ class DeliverySerializer(serializers.ModelSerializer):
         item_data = validated_data.pop('item')
         pickup_place_coordinates = Point(pickup_place_data.pop('longitude'), pickup_place_data.pop('latitude'))
         delivery_place_coordinates = Point(delivery_place_data.pop('longitude'), delivery_place_data.pop('latitude'))
-        delivery = Delivery.objects.create(
-            item=Item.objects.create(**item_data),
-            sender=self.context['sender'],
-            receiver=Person.objects.get_or_create(**receiver_data)[0],
-            receiver_account=Account.objects.filter(email=receiver_data['email']).first(),
-            pickup_place=Place.objects.get_or_create(**pickup_place_data,
-                                                   defaults={'coordinates': pickup_place_coordinates})[0],
-            delivery_place=Place.objects.get_or_create(**delivery_place_data,
-                                                       defaults={'coordinates': delivery_place_coordinates})[0],
-        )
+        try:
+            delivery = Delivery.objects.create(
+                item=Item.objects.create(**item_data),
+                sender=self.context['sender'],
+                receiver=Person.objects.get_or_create(**receiver_data)[0],
+                receiver_account=Account.objects.filter(email=receiver_data['email']).first(),
+                pickup_place=Place.objects.get_or_create(**pickup_place_data,
+                                                       defaults={'coordinates': pickup_place_coordinates})[0],
+                delivery_place=Place.objects.get_or_create(**delivery_place_data,
+                                                           defaults={'coordinates': delivery_place_coordinates})[0],
+            )
+        except IntegrityError as exc:
+            start = exc.__str__().find('DETAIL')+8
+            end = exc.__str__().find('.', start)+1
+            raise ValidationError({'detail': exc.__str__()[start:end]})
+
         return delivery
 
 

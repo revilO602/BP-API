@@ -1,3 +1,5 @@
+import math
+
 import googlemaps
 from bpproject.settings import GOOGLE_API_KEY
 
@@ -19,19 +21,37 @@ def get_distance(origin_id, destination_id):
     return distance, duration
 
 
-def get_distance_for_sort(delivery_obj, latitude, longitude):
+def get_distance_for_sort(delivery_dict, latitude, longitude):
     """
     Get route distance between courier coordinates and pickup_place for the purpose of sorting close deliveries.
 
-    :param delivery_obj: Delivery object
+    :param delivery_dict: Delivery dictionary
     :return: route distance for driving between coordinates and pick up place of delivery - positive integer in meters
     """
     origin = {
         "lat": latitude,
         "lng": longitude
     }
-    result = gmaps.distance_matrix(origin,
-                                   f'place_id:{delivery_obj.pickup_place.place_id}')
-    print(result)
-    distance = result["rows"][0]["elements"][0]["distance"]["value"]  # in meters
+    try:
+        result = gmaps.distance_matrix(origin,
+                                       f'place_id:{delivery_dict["pickup_place"]["place_id"]}')
+        distance = result["rows"][0]["elements"][0]["distance"]["value"]  # in meters
+    except KeyError:
+        distance = math.inf
     return distance
+
+
+def get_route(origin_id, destination_id):
+    """
+    Retrieve route of delivery from Google Maps directions API.
+
+    :param origin_id: Google place ID of the starting location
+    :param destination_id: Google place ID of the end location
+    :return: Steps and polyline string as tuple
+    """
+    result = gmaps.directions(f'place_id:{origin_id}', f'place_id:{destination_id}')
+    steps_array = result[0]["legs"][0]['steps']
+    steps = list(map(lambda x: x['start_location'], steps_array))
+    steps.append(steps_array[len(steps_array) - 1]['end_location'])
+    polyline = result[0]['overview_polyline']['points']
+    return steps, polyline
