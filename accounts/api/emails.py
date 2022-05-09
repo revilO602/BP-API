@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_encode
@@ -5,6 +7,7 @@ from django.utils.encoding import force_bytes
 from helpers.classes import EmailThread
 from bpproject.settings import DEFAULT_FROM_EMAIL, URL
 
+logger = logging.getLogger('poslito')
 
 def verification_email(new_user):
     """

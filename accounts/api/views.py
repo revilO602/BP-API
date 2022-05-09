@@ -1,3 +1,5 @@
+import logging
+
 from django.shortcuts import get_object_or_404, render
 from django.utils.encoding import force_text
 from django.utils.http import urlsafe_base64_decode
@@ -17,6 +19,8 @@ from accounts.api.serializers import AccountSerializer, TokenObtainSerializerWit
 from bpproject.settings import DEBUG
 from accounts.api.emails import verification_email
 
+logger = logging.getLogger('poslito')
+
 
 class AccountsView(GenericAPIView, CreateModelMixin):
     """
@@ -32,6 +36,7 @@ class AccountsView(GenericAPIView, CreateModelMixin):
         :param request: HTTP Request with account data in body.
         :return: HTTP Response - 201 if success, 400 if invalid body
         """
+        logger.debug(f'Creating new account')
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         new_user = serializer.save()
