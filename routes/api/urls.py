@@ -6,5 +6,5 @@ app_name = 'routes'
 
 urlpatterns = [
     path('', RouteViewSet.as_view({'get': 'list'}), name="routes"),
-    path('<str:route_id>', RouteViewSet.as_view({'get': 'retrieve'}), name="routes_detail"),
+    path('<str:route_id>/', RouteViewSet.as_view({'get': 'retrieve'}), name="routes_detail"),
 ]
