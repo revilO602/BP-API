@@ -21,6 +21,8 @@ from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView
 
+from accounts.password_reset_form import MyPasswordResetForm
+
 urlpatterns = [
     path('admin/', admin.site.urls),
 
@@ -40,7 +42,7 @@ urlpatterns = [
     path('reset_password/', auth_views.PasswordResetView.as_view(
         template_name='accounts/registration/password_reset.html',
         email_template_name='emails/password_reset_email.html',
-        success_url=reverse_lazy('password_reset_done')), name='reset_password', ),
+        success_url=reverse_lazy('password_reset_done'),  form_class=MyPasswordResetForm), name='reset_password'),
     path('reset_password_sent/', auth_views.PasswordResetDoneView.as_view(
         template_name='accounts/registration/password_reset_done.html'), name='password_reset_done'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(
