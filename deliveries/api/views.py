@@ -74,7 +74,7 @@ class DeliveriesView(GenericAPIView):
         courier = self.request.query_params.get('courier')
         if courier:
             deliveries = Delivery.objects.filter(courier=user)
-            deliveries = deliveries.annotate(user_is='courier')
+            deliveries = deliveries.annotate(user_is=Value('courier'))
         else:
             deliveries = Delivery.objects.filter(Q(sender=user.person) | Q(receiver_account=user))
             deliveries = deliveries.annotate(user_is=Case(
@@ -168,7 +168,7 @@ class DeliveryStateView(APIView):
         :return: Delivery object.
         """
         delivery = Delivery.objects.filter(safe_id=safe_delivery_id)
-        delivery = delivery.annotate(user_is='courier').first()
+        delivery = delivery.annotate(user_is=Value('courier')).first()
         if not delivery:
             raise Http404
         self.check_object_permissions(self.request, delivery)
