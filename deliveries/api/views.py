@@ -131,11 +131,14 @@ class DeliveryDetailView(APIView):
         delivery = Delivery.objects.filter(id=delivery_id)
         if not delivery:
             raise Http404
-        delivery = delivery.annotate(user_is=Case(
-            When(sender=user.person, then=Value('sender')),
-            When(receiver_account=user, then=Value('receiver')),
-            When(courier=user, then=Value('courier')),
-            default=Value('unknown'), ))
+        if user.person:
+            delivery = delivery.annotate(user_is=Case(
+                When(sender=user.person, then=Value('sender')),
+                When(receiver_account=user, then=Value('receiver')),
+                When(courier=user, then=Value('courier')),
+                default=Value('unknown'), ))
+        else:
+            delivery = delivery.annotate(user_is=Value('unknown'))
         return delivery.first()
 
     def get(self, request, delivery_id):
