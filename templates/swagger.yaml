@@ -1,0 +1,985 @@
+---
+openapi: 3.0.0
+info:
+  title: Poslito API
+  description: This is an API for the Poslito delivery service.
+  termsOfService: https://www.stuba.sk/english/university/contacts/conditions-of-privacy-protection.html?page_id=12412
+  contact:
+    name: Forgot your password?
+    url: https://poslito.com/reset_password
+  version: 1.0.0
+externalDocs:
+  description: Documentation for the WebSocket courier tracking service
+  url: https://poslito.com/api/asyncapi
+servers:
+- url: https://poslito.com/api
+tags:
+- name: accounts
+  description: Operations on user accounts
+- name: deliveries
+  description: Operations on deliveries
+- name: couriers
+  description: Operations for couriers
+- name: routes
+  description: Extraction of routes
+paths:
+  /accounts/:
+    post:
+      tags:
+      - accounts
+      summary: Create a new account
+      description: Registers a new user
+      operationId: createAccount
+      requestBody:
+        description: Data for the new account
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewAccount'
+      responses:
+        "201":
+          description: account created
+        "400":
+          description: invalid input
+  /accounts/me/:
+    get:
+      tags:
+      - accounts
+      summary: Retrieve user account
+      description: Returns personal and account information of the user
+      operationId: getAccount
+      responses:
+        "200":
+          description: information of the account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200'
+        "401":
+          description: unauthorized
+        "403":
+          description: forbidden
+      security:
+      - bearerAuth: []
+    patch:
+      tags:
+      - accounts
+      summary: Update account
+      description: Partialy change any/all account data
+      operationId: updateAccount
+      requestBody:
+        description: Data for the update
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccount'
+      responses:
+        "200":
+          description: information of the account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Person'
+        "401":
+          description: unauthorized
+        "403":
+          description: forbidden
+      security:
+      - bearerAuth: []
+  /verification_email/:
+    post:
+      tags:
+      - accounts
+      summary: Resend verification email
+      description: Sends the verification email with an activation link again
+      operationId: resendVerificationEmail
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/verification_email_body'
+      responses:
+        "204":
+          description: email sent
+        "404":
+          description: account with given email not found
+        "400":
+          description: invalid body, account already active
+  /token/:
+    post:
+      tags:
+      - accounts
+      summary: Retrieve JWT token pair
+      description: Retrieves the JWT access and refresh tokens. These can than be used to authenticate the user
+      operationId: getToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/token_body'
+      responses:
+        "200":
+          description: token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        "401":
+          description: no active account, email not confirmed
+        "400":
+          description: invalid body
+  /token/refresh/:
+    post:
+      tags:
+      - accounts
+      summary: Refresh JWT token pair
+      description: Use the refresh token to refresh token pair after access token expired.
+      operationId: refreshToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenPair'
+      responses:
+        "200":
+          description: token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        "401":
+          description: invalid or expired refresh token
+        "400":
+          description: invalid body
+  /deliveries/:
+    get:
+      tags:
+      - deliveries
+      summary: Retrieve your deliveries
+      description: Get a history of deliveries that you sent, received or delivered
+      operationId: getDeliveries
+      parameters:
+      - name: courier
+        in: query
+        description: Pass the string "courier" as a parameter to retrieve deliveries where you were the courier, otherwise only sent and received deliveries are returned.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+      responses:
+        "200":
+          description: list of deliveries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Delivery'
+        "401":
+          description: unauthorized
+      security:
+      - bearerAuth: []
+    post:
+      tags:
+      - deliveries
+      summary: Create delivery
+      description: Create a new delivery that is ready to be accepted by a courier. Automatically labels you as sender
+      operationId: createDelivery
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/deliveries_body'
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+        "401":
+          description: invalid or expired access token
+        "400":
+          description: invalid body
+      security:
+      - bearerAuth: []
+  /deliveries/{id}/:
+    get:
+      tags:
+      - deliveries
+      summary: Retrieve a delivery detail
+      description: Get the detail of a delivery.
+      operationId: getDelivery
+      parameters:
+      - name: id
+        in: path
+        description: ID of the requested delivery.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "200":
+          description: list of deliveries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+        "400":
+          description: invalid ID
+        "404":
+          description: not found
+  /deliveries/{safe_id}/state/:
+    patch:
+      tags:
+      - deliveries
+      summary: Change delivery state
+      description: Change the state of the delivery using its safe ID. If the delivery is ready any courier can change its state to assigned - thus accepting the delivery. Only the assigned courier can then further change the delivery status.
+      operationId: changeDeliveryState
+      parameters:
+      - name: safe_id
+        in: path
+        description: Safe ID of the requested delivery.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/safe_id_state_body'
+      responses:
+        "200":
+          description: delivery with changed state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+        "400":
+          description: invalid safe ID
+        "404":
+          description: not found
+        "401":
+          description: unauthorized
+        "403":
+          description: forbidden
+        "406":
+          description: not acceptable state change
+      security:
+      - bearerAuth: []
+  /deliveries/preview/:
+    post:
+      tags:
+      - deliveries
+      summary: Preview delivery before creation
+      description: Send the pick up place, delivery place and item information to retrieve a preview of the route distance, expected duration and price of the delivery.
+      operationId: previewDelivery
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SafeDelivery'
+      responses:
+        "200":
+          description: route distance, expected duration and price
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_200_1'
+        "401":
+          description: unauthorized
+        "400":
+          description: invalid body
+      security:
+      - bearerAuth: []
+  /deliveries/statistics/:
+    get:
+      tags:
+      - deliveries
+      summary: Retrieve sent deliveries per month
+      description: Get the amount of deliveries sent by you per month for a given number of past months.
+      operationId: statsDeliveries
+      parameters:
+      - name: months
+        in: query
+        description: Number of months in the past to retrieve delivery count for - default=5.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: integer
+      responses:
+        "200":
+          description: list of counts per month
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/inline_response_200_2'
+        "401":
+          description: unauthorized
+      security:
+      - bearerAuth: []
+  /couriers/:
+    post:
+      tags:
+      - couriers
+      summary: Register as courier
+      description: Send courier information to register as a courier.
+      operationId: createCourier
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Courier'
+      responses:
+        "201":
+          description: created
+        "401":
+          description: unauthorized
+        "400":
+          description: invalid body, already registered
+      security:
+      - bearerAuth: []
+  /couriers/closest_deliveries/:
+    get:
+      tags:
+      - couriers
+      summary: Retrieve the closest deliveries to courier
+      description: Get 10 deliveries closest to the coordinates given in query parameters. Only deliveries with size equal or smaller than the vehicle type of the courier are retrieved.
+      operationId: closestDeliveries
+      parameters:
+      - name: lat
+        in: query
+        description: Current latitude of the courier.
+        required: true
+        style: form
+        explode: true
+        schema:
+          maximum: 90
+          minimum: -90
+          type: number
+          format: float
+          example: 48.14263867939738
+      - name: lon
+        in: query
+        description: Current longitude of the courier.
+        required: true
+        style: form
+        explode: true
+        schema:
+          maximum: 180
+          minimum: -180
+          type: number
+          format: float
+          example: 17.09862408609207
+      responses:
+        "200":
+          description: list of counts per month
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SafeDelivery'
+        "401":
+          description: unauthorized
+        "403":
+          description: forbidden
+      security:
+      - bearerAuth: []
+  /routes/:
+    get:
+      tags:
+      - routes
+      summary: Retrieve a list of routes
+      description: Get a paginated list of routes of couriers from the history of Poslito deliveries. You can filter based on start and destination adresses and time of creation. Includes coordinates of every needed step and also an encoded polyline of the route.
+      operationId: listRoutes
+      parameters:
+      - name: delivery__pickup_place__formatted_address__icontains
+        in: query
+        description: filter based on start address. This does a caps insensitive search.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: vilova
+      - name: delivery__delivery_place__formatted_address__icontains
+        in: query
+        description: filter based on destination address. This does a caps insensitive search.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: vilova
+      - name: delivery__created_at__gte
+        in: query
+        description: filter based on delivery creation date. Retrieves greater or equal than the given date-time. GT is also supported.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          format: date-time
+      - name: delivery__created_at__lte
+        in: query
+        description: filter based on delivery creation date. Retrieves less or equal than the given date-time. LT is also supported.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          format: date-time
+      responses:
+        "200":
+          description: list of routes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Route'
+  /routes/{id}/:
+    get:
+      tags:
+      - routes
+      summary: Retrieve a route detail
+      description: Get a detail of one route based on ID.
+      operationId: getRouteDetail
+      parameters:
+      - name: id
+        in: path
+        description: ID of the retrieved route.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: c71335e9-cc79-4998-93aa-4a75d93859bc
+      responses:
+        "200":
+          description: retrieved route detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Route'
+        "404":
+          description: not found
+components:
+  schemas:
+    Person:
+      required:
+      - email
+      - first_name
+      - last_name
+      - phone_number
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: example@email.com
+        first_name:
+          type: string
+          example: Jozef
+        last_name:
+          type: string
+          example: Mrkva
+        phone_number:
+          type: string
+          example: "0945025935"
+    NewAccount:
+      required:
+      - password
+      type: object
+      properties:
+        password:
+          type: string
+          format: password
+          example: password123
+      allOf:
+      - $ref: '#/components/schemas/Person'
+    UpdateAccount:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: example@email.com
+        first_name:
+          type: string
+          example: Jozef
+        last_name:
+          type: string
+          example: Mrkva
+        phone_number:
+          type: string
+          example: "0945025935"
+        password:
+          type: string
+          format: password
+          example: password123
+    Courier:
+      required:
+      - dl_expiration_date
+      - dl_number
+      - home_address
+      - id_expiration_date
+      - id_number
+      - vehicle_type
+      type: object
+      properties:
+        id_number:
+          type: string
+          writeOnly: true
+          example: HL45689
+        id_expiration_date:
+          type: string
+          format: date
+          writeOnly: true
+          example: 2022-07-23
+        dl_number:
+          type: string
+          writeOnly: true
+          example: X0456896
+        dl_expiration_date:
+          type: string
+          format: date
+          writeOnly: true
+          example: 2022-07-23
+        vehicle_type:
+          $ref: '#/components/schemas/SizeType'
+        home_address:
+          type: string
+          format: password
+          writeOnly: true
+          example: Adresova 23, Adresa
+    TokenPair:
+      required:
+      - access
+      - refresh
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+          example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTY1Mjk4NjU4MiwianRpIjoiZmUzN2EzODU2ZGFmNDQ3ZGIyY2EwNmU0OGNhNzlkYTUiLCJ1c2VyX2lkIjoiNDE0MTY1ZDUtOTNmNC00ZjExLTgyYTMtODA0ZGYyY2M5ODhkIn0.3mdXkB5tXe8rhPvJkBAUAXBDUOL0rFDmdyn9rV5rW18
+        refresh:
+          type: string
+          example: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTY1Mjk4NjU4MiwianRpIjoiZmUzN2EzODU2ZGFmNDQ3ZGIyY2EwNmU0OGNhNzlkYTUiLCJ1c2VyX2lkIjoiNDE0MTY1ZDUtOTNmNC00ZjExLTgyYTMtODA0ZGYyY2M5ODhkIn0.3mdXkB5tXe8rhPvJkBAUAXBDUOL0rFDmdyn9rV5rW18
+    Delivery:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          example: 7318d95d-9aba-4096-8f60-adcc0f37b4a5
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: 2022-05-09T08:27:05.837353Z
+        user_is:
+          $ref: '#/components/schemas/UserIs'
+        sender:
+          allOf:
+          - readOnly: true
+          - $ref: '#/components/schemas/Person'
+        receiver:
+          $ref: '#/components/schemas/Person'
+        item:
+          $ref: '#/components/schemas/Item'
+        pickup_place:
+          $ref: '#/components/schemas/Place'
+        delivery_place:
+          $ref: '#/components/schemas/Place'
+        state:
+          allOf:
+          - readOnly: true
+          - $ref: '#/components/schemas/DeliveryState'
+        expected_duration:
+          type: number
+          readOnly: true
+          example: 1776
+        route_distance:
+          type: number
+          readOnly: true
+          example: 38457
+        price:
+          type: string
+          format: decimal
+          readOnly: true
+          example: "46.53"
+        courier:
+          readOnly: true
+          allOf:
+          - $ref: '#/components/schemas/Person'
+          - type: object
+            properties:
+              courier:
+                $ref: '#/components/schemas/Courier'
+    SafeDelivery:
+      type: object
+      properties:
+        safe_id:
+          type: string
+          format: uuid
+          readOnly: true
+          example: 7318d95d-9aba-4096-8f60-adcc0f37b4a5
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: 2022-05-09T08:27:05.837353Z
+        item:
+          $ref: '#/components/schemas/Item'
+        pickup_place:
+          $ref: '#/components/schemas/Place'
+        delivery_place:
+          $ref: '#/components/schemas/Place'
+        state:
+          allOf:
+          - readOnly: true
+          - $ref: '#/components/schemas/DeliveryState'
+        expected_duration:
+          type: number
+          readOnly: true
+          example: 1776
+        route_distance:
+          type: number
+          readOnly: true
+          example: 38457
+        price:
+          type: string
+          format: decimal
+          readOnly: true
+          example: "46.53"
+    Item:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+          example: A pair of shoes
+        description:
+          type: string
+          example: New womens running shoes, size 43, blue
+        photo:
+          type: string
+          format: url
+          readOnly: true
+          example: https://poslito.com/media/item_pictures/114779cb072c4c21bb9ca14e9bce6c62.jpg
+        size:
+          $ref: '#/components/schemas/SizeType'
+        weight:
+          $ref: '#/components/schemas/WeightType'
+        fragile:
+          type: boolean
+          example: true
+    Place:
+      required:
+      - city
+      - country
+      - formatted_address
+      - latitude
+      - longitude
+      - place_id
+      - postal_code
+      - street_address
+      type: object
+      properties:
+        place_id:
+          type: string
+          example: ChIJe5XGZxvgPkcR0IuXxtH3AAQ
+        formatted_address:
+          type: string
+          example: Dacova 14, Vienna 85101, Austria
+        country:
+          type: string
+          example: Austria
+        city:
+          type: string
+          example: Vienna
+        street_address:
+          type: string
+          example: Dacova 14
+        postal_code:
+          type: string
+          example: "85101"
+        latitude:
+          type: number
+          format: float
+          example: 48.14263867939738
+        longitude:
+          type: number
+          format: float
+          example: 17.09862408609207
+    Route:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: af76f2bb-a9b9-4925-9bfe-5e8a97db63d8
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/Route_steps'
+        polyline:
+          type: string
+          example: mtajHuhs`CQ@XbANf@nAhHr@vF\\bGXfIXdHj@fETvAh@hDn
+        start_address:
+          type: string
+          example: Vilova 23, Presov 85101, Slovakia
+        destination_address:
+          type: string
+          example: Dacova 14, Kosice 12345, Austria
+        created_at:
+          type: string
+          format: date-time
+          example: 2022-05-09T08:27:05.954755Z
+        updated_at:
+          type: string
+          format: date-time
+          example: 2022-05-09T08:27:05.957753Z
+    SizeType:
+      type: string
+      enum:
+      - small
+      - medium
+      - large
+    WeightType:
+      type: string
+      enum:
+      - light
+      - medium
+      - heavy
+    DeliveryState:
+      type: string
+      enum:
+      - ready
+      - assigned
+      - delivering
+      - delivered
+      - undeliverable
+    UserIs:
+      type: string
+      enum:
+      - sender
+      - receiver
+      - courier
+      - unknown
+    inline_response_200:
+      allOf:
+      - $ref: '#/components/schemas/Person'
+      - type: object
+        properties:
+          courier:
+            allOf:
+            - nullable: true
+            - $ref: '#/components/schemas/Courier'
+    verification_email_body:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: example@email.com
+    token_body:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: example@email.com
+        password:
+          type: string
+          format: password
+          example: password123
+    deliveries_body:
+      required:
+      - delivery_place.city
+      - delivery_place.country
+      - delivery_place.formatted_address
+      - delivery_place.latitude
+      - delivery_place.longitude
+      - delivery_place.place_id
+      - delivery_place.postal_code
+      - delivery_place.street_address
+      - item.name
+      - pickup_place.city
+      - pickup_place.country
+      - pickup_place.formatted_address
+      - pickup_place.latitude
+      - pickup_place.longitude
+      - pickup_place.place_id
+      - pickup_place.postal_code
+      - pickup_place.street_address
+      - receiver.email
+      - receiver.first_name
+      - receiver.last_name
+      - receiver.phone_number
+      type: object
+      properties:
+        item.name:
+          type: string
+          description: 'example: A pair of shoes'
+        item.description:
+          type: string
+          description: 'example: New womens running shoes, size 43, blue'
+        item.photo:
+          type: string
+          format: binary
+        item.size:
+          allOf:
+          - $ref: '#/components/schemas/SizeType'
+          - description: 'example: medium'
+        item.weight:
+          allOf:
+          - $ref: '#/components/schemas/WeightType'
+          - description: 'example: medium'
+        item.fragile:
+          type: boolean
+          description: 'example: true'
+        receiver.email:
+          type: string
+          description: 'example: example@email.com'
+          format: email
+        receiver.first_name:
+          type: string
+          description: 'example: Jozef'
+        receiver.last_name:
+          type: string
+          description: 'example: Mrkva'
+        receiver.phone_number:
+          type: string
+          description: 'example: 0945025935'
+        pickup_place.place_id:
+          type: string
+          description: 'Google Maps API place ID, example: ChIJe5XGZxvgPkcR0IuXxtH3AAQ'
+        pickup_place.formatted_address:
+          type: string
+          description: 'example: Dacova 14, Vienna 85101, Austria'
+        pickup_place.country:
+          type: string
+          description: 'example: Austria'
+        pickup_place.city:
+          type: string
+          description: 'example: Vienna'
+        pickup_place.street_address:
+          type: string
+          description: 'example: Dacova 14'
+        pickup_place.postal_code:
+          type: string
+          description: 'example: 85101'
+        pickup_place.latitude:
+          type: number
+          description: 'example: 48.14263867939738'
+          format: float
+        pickup_place.longitude:
+          type: number
+          description: 'example: 17.09862408609207'
+          format: float
+        delivery_place.place_id:
+          type: string
+          description: 'Google Maps API place ID, example: ChIJe5XGZxvgPkcR0IuXxtH3AAQ'
+        delivery_place.formatted_address:
+          type: string
+          description: 'example: Dacova 14, Vienna 85101, Austria'
+        delivery_place.country:
+          type: string
+          description: 'example: Austria'
+        delivery_place.city:
+          type: string
+          description: 'example: Vienna'
+        delivery_place.street_address:
+          type: string
+          description: 'example: Dacova 14'
+        delivery_place.postal_code:
+          type: string
+          description: 'example: 85101'
+        delivery_place.latitude:
+          type: number
+          description: 'example: 48.14263867939738'
+          format: float
+        delivery_place.longitude:
+          type: number
+          description: 'example: 17.09862408609207'
+          format: float
+    safe_id_state_body:
+      type: object
+      properties:
+        state:
+          allOf:
+          - $ref: '#/components/schemas/DeliveryState'
+          - example: assigned
+    inline_response_200_1:
+      type: object
+      properties:
+        distance:
+          $ref: '#/components/schemas/inline_response_200_1_distance'
+        duration:
+          $ref: '#/components/schemas/inline_response_200_1_duration'
+        price:
+          type: number
+          format: decimal
+          example: 68.92
+    inline_response_200_2:
+      properties:
+        month:
+          type: string
+          description: always the first of the month
+          format: date-time
+          example: 2022-05-01T00:00:00Z
+        count:
+          type: number
+          format: integer
+          example: 3
+    Route_steps:
+      type: object
+      properties:
+        lat:
+          type: number
+          format: float
+          example: 48.7163776
+        lon:
+          type: number
+          format: float
+          example: 21.261099
+      example: null
+    inline_response_200_1_distance:
+      type: object
+      properties:
+        text:
+          type: string
+          example: 57.0 km
+        value:
+          type: number
+          example: 56966
+      example: null
+    inline_response_200_1_duration:
+      type: object
+      properties:
+        text:
+          type: string
+          example: 40 mins
+        value:
+          type: number
+          example: 2409
+      example: null
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

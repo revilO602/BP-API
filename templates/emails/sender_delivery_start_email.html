@@ -1,0 +1,20 @@
+{% autoescape off %}
+Hello {{ sender_first_name }},<br>
+your delivery to {{ receiver_first_name }} has been successfully delivered.<br>
+Here are the details of the delivery:<br>
+Item: {{ item_name }}<br>
+Description: {{ item_description }}<br>
+<br>
+Sender: {{ sender_first_name }} {{ sender_last_name }}, {{ sender_email }}, {{ sender_phone }} <br>
+Receiver: {{ receiver_first_name }} {{ receiver_last_name }}, {{ receiver_email }}, {{ receiver_phone }} <br>
+Courier: {{ courier_first_name }} {{ courier_last_name }}, {{ courier_email }}, {{ courier_phone }} <br>
+<br>
+Pick up place: {{ pickup_place }}<br>
+Delivery place: {{ delivery_place }}<br>
+Price: {{ delivery_price }} €<br>
+<br>
+We hope everything went smoothly!<br>
+<br>
+Thanks for using Poslito!<br>
+
+{% endautoescape %}

@@ -1,5 +1,3 @@
-from pprint import pprint
-
 from django.contrib.gis.geos import Point
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -12,6 +10,8 @@ from django.db.utils import IntegrityError
 
 class ItemSerializer(serializers.ModelSerializer):
     """ Serializer for item instances """
+    description = serializers.CharField(required=False)
+
     class Meta:
         model = Item
         fields = ['name', 'description', 'photo', 'size', 'weight', 'fragile']
@@ -74,17 +74,6 @@ class DeliverySerializer(serializers.ModelSerializer):
         fields = ['id', 'created_at', 'user_is', 'item', 'sender', 'receiver', 'pickup_place', 'delivery_place',
                   'courier', 'state', 'expected_duration', 'route_distance', 'price']
         read_only_fields = ['id', 'created_at', 'state', 'expected_duration', 'route_distance', 'price']
-
-    # def validate_nested(self, validated_data):
-    #     pickup_place_serializer = PlaceSerializer(data=validated_data['pickup_place'])
-    #     delivery_place_serializer = PlaceSerializer(data=validated_data['delivery_place'])
-    #     receiver_serializer = PersonSerializer(data=validated_data['receiver'])
-    #     item_serializer = ItemSerializer(data=validated_data['item'])
-    #     receiver_serializer.is_valid(raise_exception=True)
-    #     item_serializer.is_valid(raise_exception=True)
-    #     pickup_place_serializer.is_valid(raise_exception=True)
-    #     delivery_place_serializer.is_valid(raise_exception=True)
-
 
     def create(self, validated_data):
         """

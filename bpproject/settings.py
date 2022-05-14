@@ -62,11 +62,10 @@ INSTALLED_APPS = [
     'django.contrib.gis',
 
     # Support apps
-    'drf_spectacular',  # Generates OpenApi3 swagger documentation
     'rest_framework',
     'rest_framework_gis',  # geographical serializers
     'corsheaders',
-    'rest_framework_simplejwt',
+    'rest_framework_simplejwt',  # authentication
 ]
 
 MIDDLEWARE = [
@@ -79,12 +78,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-SPECTACULAR_SETTINGS = {
-    'TITLE': 'BP API',
-    'DESCRIPTION': 'Dokumentacia API endpointov pre BP projekt',
-    'VERSION': '1.0.0',
-}
 
 ROOT_URLCONF = 'bpproject.urls'
 
@@ -128,7 +121,6 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 # Password validation
@@ -218,59 +210,59 @@ EMAIL_HOST_PASSWORD = SENDGRID_API_KEY
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'default': {
-#             'format': '{levelname} {asctime} {module} {message}',
-#             'style': '{',
-#         },
-#     },
-#     'handlers': {
-#         'django_file': {
-#             'level': 'DEBUG',
-#             'class': 'logging.FileHandler',
-#             'filename': os.path.join(BASE_DIR, 'django.log'),
-#             'formatter': 'default'
-#         },
-#         'poslito_file': {
-#             'level': 'DEBUG',
-#             'class': 'logging.FileHandler',
-#             'filename': os.path.join(BASE_DIR, 'poslito.log'),
-#             'formatter': 'default'
-#         },
-#         'daphne_file': {
-#             'level': 'DEBUG',
-#             'class': 'logging.FileHandler',
-#             'filename': os.path.join(BASE_DIR, 'daphne.log'),
-#             'formatter': 'default'
-#         },
-#         'console': {
-#             'level': 'DEBUG',
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'default'
-#         },
-#     },
-#     'loggers': {
-#         'daphne': {
-#             'handlers': [
-#                 'daphne_file',
-#             ],
-#             'level': 'DEBUG'
-#         },
-#         'django': {
-#             'handlers': ['django_file'],
-#             'level': 'DEBUG',
-#             'propagate': True,
-#         },
-#         'poslito': {
-#             'handlers': ['poslito_file', 'console'],
-#             'level': 'DEBUG',
-#             'propagate': True,
-#         },
-#     },
-# }
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'default': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'django_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'django.log'),
+            'formatter': 'default'
+        },
+        'poslito_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'poslito.log'),
+            'formatter': 'default'
+        },
+        'daphne_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'daphne.log'),
+            'formatter': 'default'
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'default'
+        },
+    },
+    'loggers': {
+        'daphne': {
+            'handlers': [
+                'daphne_file',
+            ],
+            'level': 'DEBUG'
+        },
+        'django': {
+            'handlers': ['django_file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'poslito': {
+            'handlers': ['poslito_file', 'console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
 
 GOOGLE_API_KEY = ENV_VARS.get('GOOGLE_API_KEY')
 

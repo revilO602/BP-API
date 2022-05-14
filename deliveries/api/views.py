@@ -1,3 +1,5 @@
+import threading
+
 import googlemaps.exceptions
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
@@ -26,24 +28,23 @@ from dateutil.relativedelta import relativedelta
 from routes.api.serializers import RouteSerializer
 
 
-def create_route(delivery):
-    """
-    Create a route entry for delivery.
-
-    :param delivery: Delivery object
-    """
-    steps, polyline = get_route(delivery.pickup_place.place_id, delivery.delivery_place.place_id)
-    data = {
-        'steps': steps,
-        'polyline': polyline
-    }
-    serializer = RouteSerializer(data=data)
-    if not serializer.is_valid(raise_exception=True):
-        print("a problem")
-        return
-    route = serializer.save()
-    route.delivery = delivery
-    route.save()
+# def create_route(delivery):
+#     """
+#     Create a route entry for delivery.
+#
+#     :param delivery: Delivery object
+#     """
+#     steps, polyline = get_route(delivery.pickup_place.place_id, delivery.delivery_place.place_id)
+#     data = {
+#         'steps': steps,
+#         'polyline': polyline
+#     }
+#     serializer = RouteSerializer(data=data)
+#     if not serializer.is_valid(raise_exception=True):
+#         return
+#     route = serializer.save()
+#     route.delivery = delivery
+#     route.save()
 
 @api_view(['GET', ])
 def uptime(request):
@@ -53,6 +54,37 @@ def uptime(request):
     uptime = str(row[0])
     uptime = uptime.replace(',', '')
     return JsonResponse({"psql": {"uptime": uptime}})
+
+
+class CreateRouteThread(threading.Thread):
+    """
+    Thread for saving the route of a delivery to database.
+    """
+
+    def __init__(self, delivery):
+        """
+        Initialize thread.
+
+        :param delivery: Delivery object
+        """
+        self.delivery = delivery
+        threading.Thread.__init__(self)
+
+    def run(self):
+        """
+        Create a route entry for delivery.
+        """
+        steps, polyline = get_route(self.delivery.pickup_place.place_id, self.delivery.delivery_place.place_id)
+        data = {
+            'steps': steps,
+            'polyline': polyline
+        }
+        serializer = RouteSerializer(data=data)
+        if not serializer.is_valid():  # if we cant create a route than just return
+            return
+        route = serializer.save()
+        route.delivery = self.delivery
+        route.save()
 
 
 class DeliveriesView(GenericAPIView):
@@ -88,33 +120,33 @@ class DeliveriesView(GenericAPIView):
         Create a new delivery, it starts in the 'ready' state.
 
         :param request: HTTP POST request with form data of a new delivery in body.
-        :return: HTTP Response - 200 with delivery data if success, 400 if invalid body
+        :return: HTTP Response - 201 with delivery data if success, 400 if invalid body
         """
         serializer = self.get_serializer(data=request.data, context={'sender': request.user.person})
-        # if not serializer.is_valid(raise_exception=True):
-        #     return Response(serializer.errors, status=400)
         serializer.is_valid(raise_exception=True)
         try:
             distance, duration = get_distance(serializer.validated_data["pickup_place"]["place_id"],
                                               serializer.validated_data["delivery_place"]["place_id"])
 
         except googlemaps.exceptions.HTTPError:
-            return Response({"error": "Invalid place Id"})
+            return Response({"error": "Invalid place Id"}, status.HTTP_400_BAD_REQUEST)
         delivery = serializer.create(serializer.validated_data)
         delivery.route_distance = distance["value"]
         delivery.expected_duration = duration["value"]
         delivery.price = calculate_price(distance["value"], delivery.item.size, delivery.item.weight)
         delivery.save()
         delivery_start_receiver_email(delivery)
-        create_route(delivery)
-        return Response(self.get_serializer(instance=delivery).data, status.HTTP_201_CREATED)
+        CreateRouteThread(delivery).start()
+        serialized_delivery = self.get_serializer(instance=delivery).data
+        serialized_delivery['user_is'] = 'sender'
+        return Response(serialized_delivery, status.HTTP_201_CREATED)
 
     def get(self, request):
         """
         Retrieve a list of deliveries from the users history.
 
         :param request: HTTP GET request with delivery ID in URL.
-        :return: HTTP Response - 200 with deliveries data if success, 404 if not found
+        :return: HTTP Response - 200 with deliveries data if success, 401 if not authenticated
         """
         deliveries = self.get_queryset()
         serializer = self.get_serializer(deliveries, many=True)
@@ -222,7 +254,9 @@ class DeliveriesStatisticsView(GenericAPIView):
         today = datetime.date.today()
         user = self.request.user
         months = self.request.query_params.get('months')
-        if not months:
+        try:
+            months = int(months)
+        except (ValueError, TypeError):
             months = 5
         start = today - relativedelta(months=months)
         today += datetime.timedelta(days=1)
@@ -238,7 +272,7 @@ class DeliveriesStatisticsView(GenericAPIView):
         Retrieve number of sent deliveries for user per month.
 
         :param request: HTTP GET request with the amount of months as query param.
-        :return: HTTP Response - 200 with requested data
+        :return: HTTP Response - 200 with requested data, 401 unauthorized
         """
         stats = self.get_queryset()
         return Response(stats)
@@ -271,4 +305,4 @@ class DeliveriesPreviewView(GenericAPIView):
             price = calculate_price(distance["value"], size, weight)
             return Response({"distance": distance, "duration": duration, "price": price})
         except googlemaps.exceptions.HTTPError:
-            return Response({"error": "Invalid place Id"})
+            return Response({"error": "Invalid place Id"}, status.HTTP_400_BAD_REQUEST)
