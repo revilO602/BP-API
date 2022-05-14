@@ -11,7 +11,7 @@ from django.http import JsonResponse, Http404
 from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
-from deliveries.api.emails import delivery_start_receiver_email
+from deliveries.api.emails import delivery_start_receiver_email, delivery_end_sender_email
 from deliveries.api.google_api import get_distance, get_route
 from deliveries.api.serializers import DeliverySerializer, SafeDeliverySerializer
 from deliveries.models import Delivery
@@ -26,25 +26,6 @@ from django.db.models import Count
 import datetime
 from dateutil.relativedelta import relativedelta
 from routes.api.serializers import RouteSerializer
-
-
-# def create_route(delivery):
-#     """
-#     Create a route entry for delivery.
-#
-#     :param delivery: Delivery object
-#     """
-#     steps, polyline = get_route(delivery.pickup_place.place_id, delivery.delivery_place.place_id)
-#     data = {
-#         'steps': steps,
-#         'polyline': polyline
-#     }
-#     serializer = RouteSerializer(data=data)
-#     if not serializer.is_valid(raise_exception=True):
-#         return
-#     route = serializer.save()
-#     route.delivery = delivery
-#     route.save()
 
 @api_view(['GET', ])
 def uptime(request):
@@ -232,7 +213,7 @@ class DeliveryStateView(APIView):
         if new_state == 'assigned':
             delivery.courier = request.user
         if new_state == 'delivered':
-            delivery_start_receiver_email(delivery)
+            delivery_end_sender_email(delivery)
         delivery.state = new_state
         delivery.save()
         serializer = self.serializer_class(delivery)
