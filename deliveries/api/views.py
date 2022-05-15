@@ -1,5 +1,3 @@
-import threading
-
 import googlemaps.exceptions
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
@@ -37,35 +35,22 @@ def uptime(request):
     return JsonResponse({"psql": {"uptime": uptime}})
 
 
-class CreateRouteThread(threading.Thread):
+def create_route(delivery):
     """
-    Thread for saving the route of a delivery to database.
+    Create a route entry for delivery.
+    :param delivery: Delivery object
     """
-
-    def __init__(self, delivery):
-        """
-        Initialize thread.
-
-        :param delivery: Delivery object
-        """
-        self.delivery = delivery
-        threading.Thread.__init__(self)
-
-    def run(self):
-        """
-        Create a route entry for delivery.
-        """
-        steps, polyline = get_route(self.delivery.pickup_place.place_id, self.delivery.delivery_place.place_id)
-        data = {
-            'steps': steps,
-            'polyline': polyline
-        }
-        serializer = RouteSerializer(data=data)
-        if not serializer.is_valid():  # if we cant create a route than just return
-            return
-        route = serializer.save()
-        route.delivery = self.delivery
-        route.save()
+    steps, polyline = get_route(delivery.pickup_place.place_id, delivery.delivery_place.place_id)
+    data = {
+        'steps': steps,
+        'polyline': polyline
+    }
+    serializer = RouteSerializer(data=data)
+    if not serializer.is_valid():  # if we cant create a route than just return
+        return
+    route = serializer.save()
+    route.delivery = delivery
+    route.save()
 
 
 class DeliveriesView(GenericAPIView):
@@ -117,7 +102,7 @@ class DeliveriesView(GenericAPIView):
         delivery.price = calculate_price(distance["value"], delivery.item.size, delivery.item.weight)
         delivery.save()
         delivery_start_receiver_email(delivery)
-        CreateRouteThread(delivery).start()
+        create_route(delivery)
         serialized_delivery = self.get_serializer(instance=delivery).data
         serialized_delivery['user_is'] = 'sender'
         return Response(serialized_delivery, status.HTTP_201_CREATED)

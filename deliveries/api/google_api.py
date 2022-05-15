@@ -25,6 +25,8 @@ def get_distance_for_sort(delivery_dict, latitude, longitude):
     """
     Get route distance between courier coordinates and pickup_place for the purpose of sorting close deliveries.
 
+    :param longitude: current longitude of courier
+    :param latitude: current latitude of courier
     :param delivery_dict: Delivery dictionary
     :return: route distance for driving between coordinates and pick up place of delivery - positive integer in meters
     """
