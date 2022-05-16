@@ -159,7 +159,7 @@ class CourierConsumer(JsonWebsocketConsumer):
             if not validate_message(content):
                 self.send_json(FORMAT_ERROR_MESSAGE)
                 return
-            content["courier_id"] = user.id
+            content["courier_id"] = str(user.id)
             # Send couriers position to delivery group
             async_to_sync(self.channel_layer.group_send)(
                 self.group_name,
