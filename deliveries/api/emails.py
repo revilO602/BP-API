@@ -33,7 +33,7 @@ def delivery_end_sender_email(delivery):
 
     :param delivery: delivery object
     """
-    message = render_to_string('emails/receiver_delivery_start_email.html',
+    message = render_to_string('emails/sender_delivery_start_email.html',
                                {'sender_first_name': delivery.sender.first_name,
                                 'sender_last_name': delivery.sender.last_name,
                                 'sender_email': delivery.sender.email,
