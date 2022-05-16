@@ -159,6 +159,7 @@ class CourierConsumer(JsonWebsocketConsumer):
             if not validate_message(content):
                 self.send_json(FORMAT_ERROR_MESSAGE)
                 return
+            content["courier_id"] = user.id
             # Send couriers position to delivery group
             async_to_sync(self.channel_layer.group_send)(
                 self.group_name,
@@ -184,6 +185,5 @@ class CourierConsumer(JsonWebsocketConsumer):
         :param event: Wrapper of the message.
         """
         content = event['message']
-        content['courier_id'] = str(self.scope["user"].id)
         # Send message to WebSocket
         self.send_json(content)
